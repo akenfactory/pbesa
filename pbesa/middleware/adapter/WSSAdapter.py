@@ -1,7 +1,7 @@
 from threading import Thread
-from pbesa.kernel.SystemTK.Adm import Adm
-from pbesa.kernel.util.Queue import Queue
-from pbesa.kernel.adapter.Adapter import Adapter
+from ...kernel.SystemTK.Adm import Adm
+from ...kernel.util.Queue import Queue
+from ...kernel.adapter.Adapter import Adapter
 
 import json
 import asyncio

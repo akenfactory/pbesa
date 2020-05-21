@@ -1,7 +1,7 @@
 from threading import Thread
 from abc import ABC, abstractmethod
-from pbesa.Kernel.system.Adm import Adm
-from pbesa.Kernel.adapter.Adapter import Adapter
+from ...Kernel.system.Adm import Adm
+from ...Kernel.adapter.Adapter import Adapter
 
 import os
 import random

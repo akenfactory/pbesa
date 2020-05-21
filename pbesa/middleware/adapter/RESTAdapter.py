@@ -1,7 +1,7 @@
 from threading import Thread
-from pbesa.kernel.System.Adm import Adm
-from pbesa.kernel.Util.Queue import Queue
-from pbesa.kernel.Adapter.Adapter import Adapter
+from ...kernel.System.Adm import Adm
+from ...kernel.Util.Queue import Queue
+from ...kernel.Adapter.Adapter import Adapter
 
 import web
 import json

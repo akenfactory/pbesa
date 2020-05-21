@@ -1,5 +1,5 @@
-from pbesa.kernel.adapter.Adapter import Adapter
-from pbesa.kernel.io.SystemFile import SystemFile
+from ...kernel.adapter.Adapter import Adapter
+from ...kernel.io.SystemFile import SystemFile
 
 class FileAdapter(Adapter):
 

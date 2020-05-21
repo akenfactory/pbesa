@@ -9,7 +9,7 @@ setup(
   author = 'Enrique Gonzales Guerreo, Cesar Julio Bustacara, Fabian Jose Roldan',
   author_email = 'egonzal@javeriana.edu.co, cbustaca@javeriana.edu.co, fjroldan@akenfactory.com',
   url = 'https://github.com/akenfactory/pbesa.git',
-  download_url = 'https://github.com/akenfactory/pbesa/archive/1.4.tar.gz',
+  download_url = 'https://github.com/akenfactory/pbesa/archive/1.5.tar.gz',
   keywords = ['agent', 'multi-agent', 'system', 'artificial', 'intelligence'],
   packages=setuptools.find_packages(),
   install_requires=[],

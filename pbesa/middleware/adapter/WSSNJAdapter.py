@@ -1,9 +1,9 @@
 from threading import Thread
-from pbesa.kernel.system.Adm import Adm
-from pbesa.kernel.adapter.Adapter import Adapter
-from pbesa.middleware.adapter.WSSNJHandler import WSSNJHandler
-from pbesa.middleware.adapter.SubProcessAdapter import SubProcessAdapter
-from pbesa.kernel.io.TCPServer import TCPServer
+from ...kernel.system.Adm import Adm
+from ...kernel.adapter.Adapter import Adapter
+from ...middleware.adapter.WSSNJHandler import WSSNJHandler
+from ...middleware.adapter.SubProcessAdapter import SubProcessAdapter
+from ...kernel.io.TCPServer import TCPServer
 
 import os
 import sys

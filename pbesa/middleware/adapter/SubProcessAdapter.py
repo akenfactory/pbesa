@@ -1,6 +1,6 @@
 from subprocess import call
 from threading import Thread
-from pbesa.kernel.adapter.Adapter import Adapter
+from ...kernel.adapter.Adapter import Adapter
 
 class SubProcessAdapter(AdapTK, Thread):
 

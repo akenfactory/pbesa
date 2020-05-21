@@ -1,5 +1,5 @@
-from pbesa.kernel.util.Log import Log
-from pbesa.kernel.agent.Action import Action
+from ...kernel.util.Log import Log
+from ...kernel.agent.Action import Action
 
 class RESTResponseAction(Action):
     

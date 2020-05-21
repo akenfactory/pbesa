@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from pbesa.kernel.util.Queue import Queue
-from pbesa.kernel.system.Adm import Adm
-from pbesa.kernel.agent.Channel import Channel
-from pbesa.kernel.util.HashTable import HashTable
-from pbesa.kernel.agent.BehaviorExe import BehaviorExe
+from ...kernel.util.Queue import Queue
+from ...kernel.system.Adm import Adm
+from ...kernel.agent.Channel import Channel
+from ...kernel.util.HashTable import HashTable
+from ...kernel.agent.BehaviorExe import BehaviorExe
 
 class Agent(ABC):
     

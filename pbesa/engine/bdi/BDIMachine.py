@@ -1,7 +1,7 @@
 from threading import Thread
-from pbesa.kernel.util.Queue import Queue
-from pbesa.middleware.bdi.GoalExe import GoalExe
-from pbesa.middleware.bdi.BDILevel import BDILevel
+from ...kernel.util.Queue import Queue
+from ...middleware.bdi.GoalExe import GoalExe
+from ...middleware.bdi.BDILevel import BDILevel
 
 import time
 import random

@@ -1,4 +1,4 @@
-from pbesa.kernel.util.Log import Log
+from ...kernel.util.Log import Log
 
 class WebAgTK():
     

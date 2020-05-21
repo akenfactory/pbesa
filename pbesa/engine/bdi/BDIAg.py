@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from pbesa.kernel.util.Queue import Queue
-from pbesa.kernel.system.Adm import Adm
-from pbesa.middleware.bdi.BDIMachine import BDIMachine 
+from ...kernel.util.Queue import Queue
+from ...kernel.system.Adm import Adm
+from ...middleware.bdi.BDIMachine import BDIMachine 
 
 class BDIAg(ABC):
 

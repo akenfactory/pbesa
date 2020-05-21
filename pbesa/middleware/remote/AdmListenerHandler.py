@@ -4,9 +4,9 @@ import json
 import inspect
 import socketserver
 from time import sleep
-from pbesa.kernel.util.Log import Log
+from ...kernel.util.Log import Log
 from importlib.machinery import SourceFileLoader
-from pbesa.kernel.system.Directory import Directory
+from ...kernel.system.Directory import Directory
 
 import types
 
@@ -52,7 +52,7 @@ class AdmListenerHandler(socketserver.StreamRequestHandler):
             
             Log().info('The agent ' + ag.id +  " was started.")            
         if info['command'] == 'SENDEVENT':
-            from pbesa.KernelTK.SystemTK.Adm import Adm
+            from ...KernelTK.SystemTK.Adm import Adm
             Adm().sendEvent(info['alias'], info['event'], info['data'])
             rsp = 'ACK'
             self.wfile.write(bytes(rsp + "\n", "utf-8"))

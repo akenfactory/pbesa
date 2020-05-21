@@ -1,5 +1,5 @@
-from pbesa.kernel.util.Log import Log
-from pbesa.kernel.Agent.Action import Action
+from ...kernel.util.Log import Log
+from ...kernel.Agent.Action import Action
 
 class WSResponseAction(Action):
     

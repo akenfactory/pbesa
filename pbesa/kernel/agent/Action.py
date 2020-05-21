@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from pbesa.kernel.system.Adm import Adm
+from ...kernel.system.Adm import Adm
 import logging
 
 class Action(ABC):

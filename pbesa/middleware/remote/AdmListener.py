@@ -1,6 +1,6 @@
 import socketserver
 from threading import Thread
-from pbesa.middleware.remote.AdmListenerHandler import AdmListenerHandler
+from ...middleware.remote.AdmListenerHandler import AdmListenerHandler
 
 class AdmListener(Thread):
 

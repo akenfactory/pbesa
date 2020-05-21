@@ -1,10 +1,10 @@
-from pbesa.kernel.agent.Agent import Agent
-from pbesa.kernel.util.HashTable import HashTable
-from pbesa.middleware.web.behavior.WSRequestAction import WSRequestAction
-from pbesa.middleware.web.behavior.WSResponseAction import WSResponseAction
-from pbesa.middleware.web.behavior.RESTRequestAction import RESTRequestAction
-from pbesa.middleware.web.behavior.RESTResponseAction import RESTResponseAction
-from pbesa.middleware.web.behavior.WSSNJDelegateAction import WSSNJDelegateAction
+from ...kernel.agent.Agent import Agent
+from ...kernel.util.HashTable import HashTable
+from ...middleware.web.behavior.WSRequestAction import WSRequestAction
+from ...middleware.web.behavior.WSResponseAction import WSResponseAction
+from ...middleware.web.behavior.RESTRequestAction import RESTRequestAction
+from ...middleware.web.behavior.RESTResponseAction import RESTResponseAction
+from ...middleware.web.behavior.WSSNJDelegateAction import WSSNJDelegateAction
 
 class FrontControllerAgent(AgtTK):
 

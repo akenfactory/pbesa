@@ -1,7 +1,7 @@
 import pymongo
 
 from pymongo import MongoClient
-from pbesa.kernel.adapter.Adapter import Adapter
+from ...kernel.adapter.Adapter import Adapter
 
 class MongoAdapter(AdapTK):
 

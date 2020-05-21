@@ -4,12 +4,12 @@ import sys
 import json
 import socket
 from time import sleep
-from pbesa.kernel.util.Log import Log
-from pbesa.kernel.util.HashTable import HashTable
-from pbesa.kernel.system.Directory import Directory
-from pbesa.kernel.adapter.FileAdapter import FileAdapter
-from pbesa.middleware.remote.RemoteAdm import RemoteAdm
-from pbesa.middleware.remote.AdmListener import AdmListener
+from ...kernel.util.Log import Log
+from ...kernel.util.HashTable import HashTable
+from ...kernel.system.Directory import Directory
+from ...kernel.adapter.FileAdapter import FileAdapter
+from ...middleware.remote.RemoteAdm import RemoteAdm
+from ...middleware.remote.AdmListener import AdmListener
 
 class Adm(object):
     class __Adm:

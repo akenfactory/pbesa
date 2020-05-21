@@ -1,6 +1,6 @@
-from pbesa.kernel.util.Log import Log
-from pbesa.kernel.system.Adm import Adm
-from pbesa.kernel.agent.Action import Action
+from ...kernel.util.Log import Log
+from ...kernel.system.Adm import Adm
+from ...kernel.agent.Action import Action
 
 class RESTRequestAction(Action):
 	
