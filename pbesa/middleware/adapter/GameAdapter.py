@@ -1,7 +1,7 @@
 from threading import Thread
 from abc import ABC, abstractmethod
-from ...Kernel.system.Adm import Adm
-from ...Kernel.adapter.Adapter import Adapter
+#from ...kernel.system.Adm import Adm
+from ...kernel.adapter.Adapter import Adapter
 
 import os
 import random
@@ -9,7 +9,7 @@ import pygame
 import math
 import sys
 
-class GameAdapter(AdapTK, Thread):
+class GameAdapter(Adapter, Thread):
 
     adm = None
     conf = None
@@ -20,7 +20,7 @@ class GameAdapter(AdapTK, Thread):
     def __init__(self, conf):        
         self.conf = conf
         self.agentList = []
-        self.adm = Adm()
+        self.adm = None #Adm()
         super().__init__()
 
     def setUp(self):

@@ -2,7 +2,7 @@ from subprocess import call
 from threading import Thread
 from ...kernel.adapter.Adapter import Adapter
 
-class SubProcessAdapter(AdapTK, Thread):
+class SubProcessAdapter(Adapter, Thread):
 
     app = None
     file = None    

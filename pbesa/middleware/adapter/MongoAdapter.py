@@ -3,7 +3,7 @@ import pymongo
 from pymongo import MongoClient
 from ...kernel.adapter.Adapter import Adapter
 
-class MongoAdapter(AdapTK):
+class MongoAdapter(Adapter):
 
     db = None
     conf = None

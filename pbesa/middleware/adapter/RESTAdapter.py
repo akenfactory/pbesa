@@ -1,19 +1,19 @@
 from threading import Thread
-from ...kernel.System.Adm import Adm
-from ...kernel.Util.Queue import Queue
-from ...kernel.Adapter.Adapter import Adapter
+#from ...kernel.system.Adm import Adm
+from ...kernel.util.Queue import Queue
+from ...kernel.adapter.Adapter import Adapter
 
-import web
+#import web
 import json
 
-class RESTAdapter(AdapTK, Thread):
+class RESTAdapter(Adapter, Thread):
 
     app = None
     adm = None
     conf = None
     
     def __init__(self):
-        self.adm = Adm()
+        self.adm = None #Adm()
         super().__init__()
 
     def setUp(self):

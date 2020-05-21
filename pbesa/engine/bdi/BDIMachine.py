@@ -1,7 +1,7 @@
 from threading import Thread
 from ...kernel.util.Queue import Queue
-from ...middleware.bdi.GoalExe import GoalExe
-from ...middleware.bdi.BDILevel import BDILevel
+from .GoalExe import GoalExe
+from .BDILevel import BDILevel
 
 import time
 import random

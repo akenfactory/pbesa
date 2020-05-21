@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 class RationalAg(ABC):
 
 	id = None
-    state = None     
+	state = None     
 	brain = None
 	world = None
 	exePool = None
@@ -11,20 +11,20 @@ class RationalAg(ABC):
 
 	def __init__(self):
 		self.settings = self.setUp()
-        self.id = self.settings['id']
+		self.id = self.settings['id']
 		self.state = self.settings['state']
 		self.brain = self.settings['brain']
 		self.world = self.settings['world']
 		size = self.settings['pool_size']
-        Adm().addAgent(self)
-        self.exePool = Queue(size)        
-        for x in range(1, size):
-        	self.exePool.put(ActionExe(self.exePool))
+		Adm().addAgent(self)
+		self.exePool = Queue(size)        
+		for x in range(1, size):
+			self.exePool.put(ActionExe(self.exePool))
 		super().__init__()
 
 	@abstractmethod
-    def setUp(self, settings):
-        pass
+	def setUp(self, settings):
+		pass
 
 	def sendEvent(self, event, data):
 		self.world.update(event, data)
@@ -38,6 +38,6 @@ class RationalAg(ABC):
 
 	def getFree(self):
 		exeA = self.pool.get()
-        self.pool.task_done()
-        return exeA 
+		self.pool.task_done()
+		return exeA 
 

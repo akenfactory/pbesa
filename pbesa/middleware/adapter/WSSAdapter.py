@@ -1,13 +1,13 @@
 from threading import Thread
-from ...kernel.SystemTK.Adm import Adm
+#from ...kernel.SystemTK.Adm import Adm
 from ...kernel.util.Queue import Queue
 from ...kernel.adapter.Adapter import Adapter
 
 import json
 import asyncio
-import websockets
+#import websockets
 
-class WSSAdapter(AdapTK, Thread):
+class WSSAdapter(Adapter, Thread):
 
     IP = None
     adm = None

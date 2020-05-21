@@ -12,7 +12,7 @@ setup(
   download_url = 'https://github.com/akenfactory/pbesa/archive/1.7.tar.gz',
   keywords = ['agent', 'multi-agent', 'system', 'artificial', 'intelligence'],
   packages=setuptools.find_packages(),
-  install_requires=[],
+  install_requires=['pygame', 'pymongo'],
   classifiers=[  # Optional
     # How mature is this project? Common values are
     #   3 - Alpha

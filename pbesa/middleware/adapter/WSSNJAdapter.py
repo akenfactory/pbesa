@@ -1,5 +1,5 @@
 from threading import Thread
-from ...kernel.system.Adm import Adm
+#from ...kernel.system.Adm import Adm
 from ...kernel.adapter.Adapter import Adapter
 from ...middleware.adapter.WSSNJHandler import WSSNJHandler
 from ...middleware.adapter.SubProcessAdapter import SubProcessAdapter
@@ -8,11 +8,11 @@ from ...kernel.io.TCPServer import TCPServer
 import os
 import sys
 import json
-import socketserver
+#import socketserver
 
 import threading
 
-class WSSNJAdapter(AdapTK, Thread):
+class WSSNJAdapter(Adapter, Thread):
 
     IP = None
     adm = None
