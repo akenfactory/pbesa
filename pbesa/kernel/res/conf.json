@@ -1,0 +1,8 @@
+{
+    "conf": {
+        "user" : "fbloggs",
+        "ip" : "localhost",
+        "port" : 8080,
+        "remote" : null     
+    }
+}

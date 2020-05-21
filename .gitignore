@@ -1,0 +1,11 @@
+/src/**/*.pyc
+/src/**/*.class
+/src/**/*.bak
+/src/**/*.xlsx
+/src/**/*.xls
+/src/**/*.env
+/src/**/*.log
+/src/**/*.csv
+/src/**/*.owl
+/src/pbesa/middleware/adapter/node_modules
+/src/**/*.joblib
