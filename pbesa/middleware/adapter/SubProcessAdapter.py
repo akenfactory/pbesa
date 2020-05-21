@@ -1,6 +1,6 @@
 from subprocess import call
 from threading import Thread
-from TokenForce.KernelTK.AdapterTK.AdapTK import AdapTK
+from pbesa.kernel.adapter.Adapter import Adapter
 
 class SubProcessAdapter(AdapTK, Thread):
 

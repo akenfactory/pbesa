@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from TokenForce.KernelTK.Util.Queue import Queue
-from TokenForce.KernelTK.SystemTK.Adm import Adm
-from TokenForce.MiddlewareTK.BDITK.BDIMachine import BDIMachine 
+from pbesa.kernel.util.Queue import Queue
+from pbesa.kernel.system.Adm import Adm
+from pbesa.middleware.bdi.BDIMachine import BDIMachine 
 
 class BDIAg(ABC):
 

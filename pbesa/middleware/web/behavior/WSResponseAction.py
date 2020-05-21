@@ -1,7 +1,7 @@
-from TokenForce.KernelTK.Util.Log import Log
-from TokenForce.KernelTK.AgentTK.ActionTK import ActionTK
+from pbesa.kernel.util.Log import Log
+from pbesa.kernel.Agent.Action import Action
 
-class WSResponseAction(ActionTK):
+class WSResponseAction(Action):
     
     def execute(self, data):    	
         queue = self.agent.requestTable[data['requestID']]

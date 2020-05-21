@@ -1,7 +1,7 @@
 from threading import Thread
 from abc import ABC, abstractmethod
-from TokenForce.KernelTK.SystemTK.Adm import Adm
-from TokenForce.KernelTK.AdapterTK.AdapTK import AdapTK
+from pbesa.Kernel.system.Adm import Adm
+from pbesa.Kernel.adapter.Adapter import Adapter
 
 import os
 import random

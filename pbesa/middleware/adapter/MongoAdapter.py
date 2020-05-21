@@ -1,7 +1,7 @@
 import pymongo
 
 from pymongo import MongoClient
-from TokenForce.KernelTK.AdapterTK.AdapTK import AdapTK
+from pbesa.kernel.adapter.Adapter import Adapter
 
 class MongoAdapter(AdapTK):
 

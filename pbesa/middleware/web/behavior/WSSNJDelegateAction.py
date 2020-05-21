@@ -1,7 +1,7 @@
-from TokenForce.KernelTK.Util.Log import Log
-from TokenForce.KernelTK.AgentTK.ActionTK import ActionTK
+from pbesa.kernel.util.Log import Log
+from pbesa.kernel.agent.Action import Action
 
-class WSSNJDelegateAction(ActionTK):
+class WSSNJDelegateAction(Action):
     
     def execute(self, data):
         request = data['request']

@@ -1,7 +1,7 @@
 from threading import Thread
-from TokenForce.KernelTK.Util.Queue import Queue
-from TokenForce.MiddlewareTK.BDITK.GoalExe import GoalExe
-from TokenForce.MiddlewareTK.BDITK.BDILevel import BDILevel
+from pbesa.kernel.util.Queue import Queue
+from pbesa.middleware.bdi.GoalExe import GoalExe
+from pbesa.middleware.bdi.BDILevel import BDILevel
 
 import time
 import random

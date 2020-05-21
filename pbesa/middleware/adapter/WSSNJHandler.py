@@ -2,9 +2,9 @@ import json
 import socket
 import socketserver
 from time import sleep
-from TokenForce.KernelTK.Util.Log import Log
-from TokenForce.KernelTK.SystemTK.Adm import Adm
-from TokenForce.KernelTK.SystemTK.Directory import Directory
+from pbesa.kernel.util.Log import Log
+from pbesa.kernel.system.Adm import Adm
+from pbesa.kernel.system.Directory import Directory
 
 class WSSNJHandler(socketserver.BaseRequestHandler):
 

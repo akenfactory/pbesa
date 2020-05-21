@@ -52,7 +52,7 @@ class AdmListenerHandler(socketserver.StreamRequestHandler):
             
             Log().info('The agent ' + ag.id +  " was started.")            
         if info['command'] == 'SENDEVENT':
-            from TokenForce.KernelTK.SystemTK.Adm import Adm
+            from pbesa.KernelTK.SystemTK.Adm import Adm
             Adm().sendEvent(info['alias'], info['event'], info['data'])
             rsp = 'ACK'
             self.wfile.write(bytes(rsp + "\n", "utf-8"))

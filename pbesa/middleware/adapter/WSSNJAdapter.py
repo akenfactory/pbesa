@@ -1,10 +1,9 @@
 from threading import Thread
-from TokenForce.KernelTK.SystemTK.Adm import Adm
-from TokenForce.KernelTK.AdapterTK.AdapTK import AdapTK
-from TokenForce.MiddlewareTK.AdapterTK.WSSNJHandlerTK import WSSNJHandlerTK
-from TokenForce.MiddlewareTK.AdapterTK.SubProcessAdapter import SubProcessAdapter
-
-from TokenForce.KernelTK.IOTK.TCPServerTK import TCPServerTK
+from pbesa.kernel.system.Adm import Adm
+from pbesa.kernel.adapter.Adapter import Adapter
+from pbesa.middleware.adapter.WSSNJHandler import WSSNJHandler
+from pbesa.middleware.adapter.SubProcessAdapter import SubProcessAdapter
+from pbesa.kernel.io.TCPServer import TCPServer
 
 import os
 import sys

@@ -1,7 +1,7 @@
 from threading import Thread
-from TokenForce.KernelTK.SystemTK.Adm import Adm
-from TokenForce.KernelTK.Util.Queue import Queue
-from TokenForce.KernelTK.AdapterTK.AdapTK import AdapTK
+from pbesa.kernel.System.Adm import Adm
+from pbesa.kernel.Util.Queue import Queue
+from pbesa.kernel.Adapter.Adapter import Adapter
 
 import web
 import json

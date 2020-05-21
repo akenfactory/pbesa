@@ -1,4 +1,4 @@
-from TokenForce.KernelTK.Util.Log import Log
+from pbesa.kernel.util.Log import Log
 
 class WebAgTK():
     

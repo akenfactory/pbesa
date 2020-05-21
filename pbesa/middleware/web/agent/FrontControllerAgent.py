@@ -1,10 +1,10 @@
-from TokenForce.KernelTK.AgentTK.AgtTK import AgtTK
-from TokenForce.KernelTK.Util.HashTable import HashTable
-from TokenForce.MiddlewareTK.WEBTK.behavior.WSRequestAction import WSRequestAction
-from TokenForce.MiddlewareTK.WEBTK.behavior.WSResponseAction import WSResponseAction
-from TokenForce.MiddlewareTK.WEBTK.behavior.RESTRequestAction import RESTRequestAction
-from TokenForce.MiddlewareTK.WEBTK.behavior.RESTResponseAction import RESTResponseAction
-from TokenForce.MiddlewareTK.WEBTK.behavior.WSSNJDelegateAction import WSSNJDelegateAction
+from pbesa.kernel.agent.Agent import Agent
+from pbesa.kernel.util.HashTable import HashTable
+from pbesa.middleware.web.behavior.WSRequestAction import WSRequestAction
+from pbesa.middleware.web.behavior.WSResponseAction import WSResponseAction
+from pbesa.middleware.web.behavior.RESTRequestAction import RESTRequestAction
+from pbesa.middleware.web.behavior.RESTResponseAction import RESTResponseAction
+from pbesa.middleware.web.behavior.WSSNJDelegateAction import WSSNJDelegateAction
 
 class FrontControllerAgent(AgtTK):
 

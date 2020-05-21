@@ -1,8 +1,8 @@
-from TokenForce.KernelTK.Util.Log import Log
-from TokenForce.KernelTK.SystemTK.Adm import Adm
-from TokenForce.KernelTK.AgentTK.ActionTK import ActionTK
+from pbesa.kernel.util.Log import Log
+from pbesa.kernel.system.Adm import Adm
+from pbesa.kernel.agent.Action import Action
 
-class WSRequestAction(ActionTK):
+class WSRequestAction(Action):
     
     def execute(self, data):
         request = data['request']
