@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class WorldTK(ABC):
+class World(ABC):
 	
 	agent = None
 

@@ -6,7 +6,7 @@ from TokenForce.KernelTK.Util.Log import Log
 from TokenForce.KernelTK.SystemTK.Adm import Adm
 from TokenForce.KernelTK.SystemTK.Directory import Directory
 
-class WSSNJHandlerTK(socketserver.BaseRequestHandler):
+class WSSNJHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
         try:
@@ -20,5 +20,5 @@ class WSSNJHandlerTK(socketserver.BaseRequestHandler):
                 dto = {'socket': self.request, 'request': rqst}
                 Adm().sendEvent('front_controller', 'wsnj_delegate', dto)
         except Exception as inst:
-            print('Controled ecxeption in WSSNJHandlerTK: ')
+            print('Controled ecxeption in WSSNJHandler: ')
             print(inst)

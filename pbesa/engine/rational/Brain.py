@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class BrainTK(ABC):
+class Brain(ABC):
 
 	def __init__(self):
 		super().__init__()

@@ -3,7 +3,7 @@ from TokenForce.KernelTK.Util.Queue import Queue
 from TokenForce.KernelTK.SystemTK.Adm import Adm
 from TokenForce.MiddlewareTK.BDITK.BDIMachine import BDIMachine 
 
-class BDIAgTK(ABC):
+class BDIAg(ABC):
 
     id = None    
     queue = None     

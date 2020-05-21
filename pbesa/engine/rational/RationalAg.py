@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class RationalAgTK(ABC):
+class RationalAg(ABC):
 
 	id = None
     state = None     

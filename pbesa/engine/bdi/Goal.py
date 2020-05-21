@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-class GoalTK(ABC):
+class Goal(ABC):
 
     id = None
     plan = None
