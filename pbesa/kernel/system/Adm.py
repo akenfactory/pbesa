@@ -30,15 +30,18 @@ class Adm(object):
             log = Log()
 
             if conf == '':
-                CONF_DIR = os.path.dirname(os.path.abspath(__file__))             
-                CONF_DIR = os.path.join(CONF_DIR.replace("system", ""), "res", "conf.json")
+                self.conf = {
+                    "user" : "local",
+                    "ip" : "localhost",
+                    "port" : 8080,
+                    "remote" : None     
+                }
             else:
                 CONF_DIR = conf
-
-            fa = FileAdapter({'alias':'JsonAdapter', 'type': 'JSON', 'path': CONF_DIR})
-            fa.setUp()
-            param = fa.request()
-            self.conf = param['conf']
+                fa = FileAdapter({'alias':'JsonAdapter', 'type': 'JSON', 'path': CONF_DIR})
+                fa.setUp()
+                param = fa.request()
+                self.conf = param['conf']
 
             if self.conf['remote']:
                 remote = self.conf['remote']                
