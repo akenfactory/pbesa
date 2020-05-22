@@ -1,4 +1,3 @@
-from ...kernel.util.Log import Log
 from ...kernel.agent.Action import Action
 
 class WSSNJDelegateAction(Action):
@@ -6,7 +5,6 @@ class WSSNJDelegateAction(Action):
     def execute(self, data):
         request = data['request']
         try:             
-            Log().info('[WS-REQUEST]:To agent: ' + request['agent'] + ', event: ' + request['event'] + '.')                    
             dto = {'context': request['context'], 'data': request['data']}
 
             if request['context'] == 'register' or request['context'] == 'login':
@@ -59,4 +57,4 @@ class WSSNJDelegateAction(Action):
         dto = str(dto)
         dto = dto.replace("'", "\"") + '\n'
         socket.sendall(dto.encode())            
-        Log().info('[WS-RESPONSE]: ' + dto + '.')
+        

@@ -1,4 +1,3 @@
-from ...kernel.util.Log import Log
 from ...kernel.agent.Action import Action
 
 class RESTResponseAction(Action):

@@ -1,11 +1,9 @@
-from ...kernel.util.Log import Log
 from ...kernel.system.Adm import Adm
 from ...kernel.agent.Action import Action
 
 class RESTRequestAction(Action):
 	
     def execute(self, data):
-        Log().info(data)
         url = data['url']
         dto = data['data']
 

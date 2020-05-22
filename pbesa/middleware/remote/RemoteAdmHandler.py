@@ -3,7 +3,6 @@ import json
 import socket
 import socketserver
 from time import sleep
-from ...kernel.util.Log import Log
 from importlib.machinery import SourceFileLoader
 from ...kernel.system.Directory import Directory
         
@@ -30,7 +29,8 @@ class RemoteAdmHandler(socketserver.StreamRequestHandler):
                     sock.connect( (ctn['ip'], int(ctn['port'])) )                            
                     sock.sendall(bytes(dto + "\n", "utf-8"))
                 except:
-                    log.warn('The container could not connect to container:' + ctn['alias'])
+                    pass
+                    
                 finally:
                     sock.close()
 
@@ -60,8 +60,7 @@ class RemoteAdmHandler(socketserver.StreamRequestHandler):
             ag.state = info['state']
             ag.start()
             
-            Log().info('The agent ' + ag.id +  " was started.")
-
+            
         if info['command'] == 'UPDATE':        
             agents = info['agents']
             directory = Directory()
@@ -78,6 +77,7 @@ class RemoteAdmHandler(socketserver.StreamRequestHandler):
                     sock.connect( (ctn['ip'], int(ctn['port'])) )                            
                     sock.sendall(bytes(dto + "\n", "utf-8"))
                 except:
-                    log.warn('The container could not connect to container:' + ctn['alias'])
+                    pass
+                    
                 finally:
                     sock.close()

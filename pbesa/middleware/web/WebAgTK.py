@@ -1,4 +1,3 @@
-from ...kernel.util.Log import Log
 
 class WebAgTK():
     
@@ -8,8 +7,7 @@ class WebAgTK():
         data = str(data)
         data = data.replace("'", "\"") + '\n'
         self.socket.sendall(data.encode()) 
-        Log().info('[WS-RESPONSE]: ' + data + '.')
-
+        
     def setSocket(self, socket):
         self.socket = socket
 

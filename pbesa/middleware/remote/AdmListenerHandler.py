@@ -4,7 +4,6 @@ import json
 import inspect
 import socketserver
 from time import sleep
-from ...kernel.util.Log import Log
 from importlib.machinery import SourceFileLoader
 from ...kernel.system.Directory import Directory
 
@@ -50,7 +49,7 @@ class AdmListenerHandler(socketserver.StreamRequestHandler):
             ag.state = info['state']
             ag.start()
             
-            Log().info('The agent ' + ag.id +  " was started.")            
+        
         if info['command'] == 'SENDEVENT':
             from ...KernelTK.SystemTK.Adm import Adm
             Adm().sendEvent(info['alias'], info['event'], info['data'])

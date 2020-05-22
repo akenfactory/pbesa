@@ -2,7 +2,6 @@ import json
 import socket
 import socketserver
 from time import sleep
-from ...kernel.util.Log import Log
 #from ...kernel.system.Adm import Adm
 from ...kernel.system.Directory import Directory
 

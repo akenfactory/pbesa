@@ -4,7 +4,6 @@ import sys
 import json
 import socket
 from time import sleep
-from ...kernel.util.Log import Log
 from ...kernel.util.HashTable import HashTable
 from ...kernel.system.Directory import Directory
 from ...kernel.adapter.FileAdapter import FileAdapter
@@ -27,8 +26,7 @@ class Adm(object):
             self.startByConf('')
 
         def startByConf(self, conf):            
-            log = Log()
-
+            
             if conf == '':
                 self.conf = {
                     "user" : "local",
@@ -62,7 +60,6 @@ class Adm(object):
                             if received == 'ACK' + "\n":
                                 break
                         except:
-                            log.warn('The container could not connect to the master. Attempt:' + str(x))
                             sleep(1) # 1 second.
                         finally:
                             sock.close()
@@ -92,7 +89,8 @@ class Adm(object):
                             sock.connect( (ctn['ip'], int(ctn['port'])) )                            
                             sock.sendall(bytes(dto + "\n", "utf-8"))
                         except:
-                            log.warn('The container could not connect to container:' + ctn['alias'])
+                            pass
+                            
                         finally:
                             sock.close()
                 else:
@@ -103,7 +101,6 @@ class Adm(object):
                         sock.connect((master['master_ip'], master['master_port']))                            
                         sock.sendall(bytes(dto + "\n", "utf-8"))
                     except:
-                        log.warn('The container could not connect to the master.')
                         sleep(1) # 1 second.
                     finally:
                         sock.close()
@@ -115,7 +112,6 @@ class Adm(object):
                     ag.sendEvent(event, data)
                     return True
                 else:
-                    log = Log()
                     remote = self.conf['remote'] 
                     attempts = remote['attempts']
                     agents = Directory().getAgents()
@@ -136,7 +132,6 @@ class Adm(object):
                                     if received == 'ACK' + "\n":
                                         break
                                 except:
-                                    log.warn('The container could not connect to the master. Attempt:' + str(x))
                                     sleep(1) # 1 second.
                                 finally:
                                     sock.close()
@@ -172,7 +167,7 @@ class Adm(object):
                         sock.connect( (ctn['ip'], int(ctn['port'])) )                            
                         sock.sendall(bytes(dto + "\n", "utf-8"))
                     except:
-                        Log().warn('The container could not connect to container: ' + ctn['alias'])
+                        pass
                     finally:
                         sock.close()
                     break    
