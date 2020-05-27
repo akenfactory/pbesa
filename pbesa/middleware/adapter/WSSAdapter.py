@@ -82,7 +82,7 @@ class WSSAdapter(Adapter, Thread):
                 print ('RESPONSE: ', response)
                 await websocket.send(response)
         except Exception as inst:
-            print('Controled ecxeption: ')
+            print('Controled exception: ')
             print(inst)
 
 

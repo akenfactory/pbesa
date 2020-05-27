@@ -40,7 +40,7 @@ class WSSNJDelegateAction(Action):
                         self.responseError(data)
 
         except Exception as inst:
-            print('Controled ecxeption in WSSNJDelegateAction: ')
+            print('Controled exception in WSSNJDelegateAction: ')
             print('MSG: ', inst)
             self.responseError(data)
             

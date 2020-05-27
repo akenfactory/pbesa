@@ -19,5 +19,5 @@ class WSSNJHandler(socketserver.BaseRequestHandler):
                 dto = {'socket': self.request, 'request': rqst}
                 Adm().sendEvent('front_controller', 'wsnj_delegate', dto)
         except Exception as inst:
-            print('Controled ecxeption in WSSNJHandler: ')
+            print('Controled exception in WSSNJHandler: ')
             print(inst)

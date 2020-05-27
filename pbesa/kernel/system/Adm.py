@@ -138,7 +138,7 @@ class Adm(object):
                     return True
 
             except Exception as inst:
-                print('Controled ecxeption in Adm: ')
+                print('Controled exception in Adm: ')
                 print(inst)
                 return False
 

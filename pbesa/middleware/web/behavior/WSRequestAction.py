@@ -12,7 +12,7 @@ class WSRequestAction(Action):
             dto = {'requestID': rqstID, 'context': request['context'], 'data': request['data']}
             Adm().sendEvent(request['agent'], request['event'], dto)	    
         except Exception as inst:
-            print('Controled ecxeption: ')
+            print('Controled exception: ')
             print('MSG: ', inst)
             dto = {
                 'state':'ERROR',
