@@ -16,7 +16,7 @@ class Adm(object):
             self.val = None
             self.conf = None
             self.adapters = HashTable()
-            self.agentsTable = HashTable()
+            self.agentsTable = {}
             self.containerList = []
             
         def __str__(self):

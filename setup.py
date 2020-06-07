@@ -3,7 +3,7 @@ import setuptools
 
 setup(
   name = 'pbesa',
-  version = '2.0',
+  version = '2.1',
   license='MIT',
   description = 'An artificial intelligence platform for the implementation of multi-agent systems based on python 3 and the BESA model',
   author = 'Enrique Gonzales Guerreo, Cesar Julio Bustacara, Fabian Jose Roldan',

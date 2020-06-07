@@ -36,7 +36,6 @@ pbesa/kernel/system/Adm.py
 pbesa/kernel/system/Directory.py
 pbesa/kernel/system/__init__.py
 pbesa/kernel/util/HashTable.py
-pbesa/kernel/util/Log.py
 pbesa/kernel/util/Queue.py
 pbesa/kernel/util/__init__.py
 pbesa/middleware/__init__.py
