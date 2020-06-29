@@ -1,12 +1,11 @@
 from ...kernel.agent.Agent import Agent
-from ...kernel.util.HashTable import HashTable
 from ...middleware.web.behavior.WSRequestAction import WSRequestAction
 from ...middleware.web.behavior.WSResponseAction import WSResponseAction
 from ...middleware.web.behavior.RESTRequestAction import RESTRequestAction
 from ...middleware.web.behavior.RESTResponseAction import RESTResponseAction
 from ...middleware.web.behavior.WSSNJDelegateAction import WSSNJDelegateAction
 
-class FrontControllerAgent(AgtTK):
+class FrontControllerAgent(Agent):
 
     poolList = None
     requestID = None
@@ -16,8 +15,8 @@ class FrontControllerAgent(AgtTK):
     def __init__(self):
         self.poolList = []
         self.requestID = 0
-        self.agentTable = HashTable()
-        self.requestTable = HashTable() 
+        self.agentTable = {}
+        self.requestTable = {}
         super().__init__()
 
     def setUp(self):
@@ -54,7 +53,7 @@ class FrontControllerAgent(AgtTK):
         self.agentTable[userID] = agID
 
     def toPool(self, userID, agID):
-        self.agentTable.slots.remove(userID)
+        self.agentTable.remove(userID)
         self.addPool(agID)
-                        
+
                         

@@ -4,6 +4,7 @@ import sys
 import json
 import socket
 from time import sleep
+from ...kernel.util.HashTable import HashTable
 from ...kernel.system.Directory import Directory
 from ...kernel.adapter.FileAdapter import FileAdapter
 from ...middleware.remote.RemoteAdm import RemoteAdm
@@ -14,7 +15,7 @@ class Adm(object):
         def __init__(self):
             self.val = None
             self.conf = None
-            self.adapters = {}
+            self.adapters = HashTable()
             self.agentsTable = {}
             self.containerList = []
             

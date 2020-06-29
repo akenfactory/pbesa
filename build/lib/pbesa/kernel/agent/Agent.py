@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from ...kernel.util.Queue import Queue
 from ...kernel.system.Adm import Adm
 from ...kernel.agent.Channel import Channel
+from ...kernel.util.HashTable import HashTable
 from ...kernel.agent.BehaviorExe import BehaviorExe
 
 class Agent(ABC):
@@ -22,8 +23,8 @@ class Agent(ABC):
         self.state = self.settings['state']
         Adm().addAgent(self)
 
-        self.eventsTable = {}
-        self.channelsTable = {}
+        self.eventsTable = HashTable()
+        self.channelsTable = HashTable()
 
         self.workerList = []
         self.channelList = []
