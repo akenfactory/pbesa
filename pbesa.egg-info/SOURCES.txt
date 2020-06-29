@@ -5,7 +5,6 @@ pbesa/__init__.py
 pbesa.egg-info/PKG-INFO
 pbesa.egg-info/SOURCES.txt
 pbesa.egg-info/dependency_links.txt
-pbesa.egg-info/requires.txt
 pbesa.egg-info/top_level.txt
 pbesa/engine/__init__.py
 pbesa/engine/bdi/BDIAg.py
@@ -35,12 +34,9 @@ pbesa/kernel/res/__init__.py
 pbesa/kernel/system/Adm.py
 pbesa/kernel/system/Directory.py
 pbesa/kernel/system/__init__.py
-pbesa/kernel/util/HashTable.py
 pbesa/kernel/util/Queue.py
 pbesa/kernel/util/__init__.py
 pbesa/middleware/__init__.py
-pbesa/middleware/adapter/GameAdapter.py
-pbesa/middleware/adapter/MongoAdapter.py
 pbesa/middleware/adapter/RESTAdapter.py
 pbesa/middleware/adapter/SubProcessAdapter.py
 pbesa/middleware/adapter/WSSAdapter.py
