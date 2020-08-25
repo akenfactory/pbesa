@@ -52,7 +52,7 @@ class UpdateAction(Action):
 - Define Agent
 ```
 from pbesa.kernel.agent.Agent import Agent
-class Mediator(Agent):
+class ResponseAgent(Agent):
     """ Through a class the concept of agent is defined """
 
     def __init__(self, dbConfig):
@@ -64,14 +64,14 @@ class Mediator(Agent):
         The agent ID, state and behaviors are defined
         """
         settings = {
-            'id': 'MediatorRQ7',
+            'id': arg['id'],
             'state': {
                 'status': arg['status'],
             },
             ,
             'behaviors': [
-                {'name': 'Register', 'events':[
-                    {'performative': 'update', 'action': UpdateAction()}
+                {'name': 'Dialog', 'events':[
+                    {'performative': 'hello', 'action': ResponseAction()}
                 ]}
             ]
         }
@@ -82,11 +82,11 @@ conf = {
     'id': agID,
     'status': 'ACTIVE'
 }
-ag = Mediator(conf)
+ag = ResponseAgent(conf)
 ag.start()
 ```
 ### Step 4 - Run MAS:
 ```
 data = "Hello World"
-mas.sendEvent('Mediator', 'update', data)
+mas.sendEvent('Jarvis', 'hello', data)
 ```
