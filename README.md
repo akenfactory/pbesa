@@ -74,6 +74,7 @@ class ResponseAgent(Agent):
                 ]}
             ]
         }
+        return settings
 ```
 - Start agent
 ```
