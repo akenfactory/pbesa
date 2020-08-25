@@ -41,7 +41,7 @@ mas.start()
 ### Step 2 - Create an action:
 ```
 from pbesa.kernel.agent.Action import Action
-class UpdateAction(Action):
+class ResponseAction(Action):
     """ An action is a response to the occurrence of an event """
 
     def execute(self, data):
@@ -68,7 +68,6 @@ class ResponseAgent(Agent):
             'state': {
                 'status': arg['status'],
             },
-            ,
             'behaviors': [
                 {'name': 'Dialog', 'events':[
                     {'performative': 'hello', 'action': ResponseAction()}
