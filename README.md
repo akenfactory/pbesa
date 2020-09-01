@@ -40,53 +40,72 @@ mas.start()
 ```
 ### Step 2 - Create an action:
 ```
-from pbesa.kernel.agent.Action import Action
-class ResponseAction(Action):
+class SumAction(Action):
     """ An action is a response to the occurrence of an event """
 
     def execute(self, data):
-        """ Response """
-        print(data)
+        """ 
+        Response.
+        @param data Event data 
+        """
+        print(self.agent.state['acum'] + data)
+
+    def catchException(self, exception):
+        """
+        Catch the exception.
+        @param exception Response exception
+        """
+        pass
 ```
 ### Step 3 - Create an agent:
 - Define Agent
 ```
-from pbesa.kernel.agent.Agent import Agent
-class ResponseAgent(Agent):
+class SumAgent(Agent):
     """ Through a class the concept of agent is defined """
-
-    def __init__(self, dbConfig):
-        """ This method is required for the operation of the agent """
-        super().__init__(dbConfig)
     
-    def setUp(self, arg):
+    def setUp(self):
         """
-        The agent ID, state and behaviors are defined
+        Method that allows defining the status, structure 
+        and resources of the agent
         """
-        settings = {
-            'id': arg['id'],
-            'state': {
-                'status': arg['status'],
-            },
-            'behaviors': [
-                {'name': 'Dialog', 'events':[
-                    {'performative': 'hello', 'action': ResponseAction()}
-                ]}
-            ]
+        # Defines the agent state
+        self.state = {
+            'acum': 7
         }
-        return settings
-```
-- Start agent
-```
-conf = {
-    'id': agID,
-    'status': 'ACTIVE'
-}
-ag = ResponseAgent(conf)
-ag.start()
+        # Defines the behavior of the agent. An agent can 
+        # have one or many behaviors
+        self.addBehavior('calculate')
+        # Assign an action to the behavior
+        self.bindAction('calculate', 'sum', SumAction())
+
+    def shutdown(self):
+        """ Method to free up the resources taken by the agent """
+        pass
 ```
 ### Step 4 - Run MAS:
 ```
-data = "Hello World"
-mas.sendEvent('Jarvis', 'hello', data)
+if __name__ == "__main__":
+    """ Main """
+    try:
+        # Initialize the container
+        mas = Adm()
+        mas.start()
+
+        # Create the agent
+        agentID = 'Jarvis'
+        ag = SumAgent(agentID)
+        ag.start()
+
+        # Send the event
+        data = 8
+        mas.sendEvent('Jarvis', 'sum', data)
+
+        # Remove the agent from the system
+        time.sleep(1)
+        mas.killAgent(ag)
+
+        # Destroy the Agent Container
+        mas.destroy()
+    except:
+        traceback.print_exc()
 ```

@@ -1,78 +1,144 @@
+# -*- coding: utf-8 -*-
+"""
+----------------------------------------------------------
+------------------------- PBESA --------------------------
+----------------------------------------------------------
+
+@autor AKEN & SIDRE
+@version 3.0.1
+@date 27/07/20
+"""
+
+# --------------------------------------------------------
+# Define resources
+# --------------------------------------------------------
 from abc import ABC, abstractmethod
-from ...kernel.util.Queue import Queue
 from ...kernel.system.Adm import Adm
+from ...kernel.util.Queue import Queue
 from ...kernel.agent.Channel import Channel
 from ...kernel.agent.BehaviorExe import BehaviorExe
+from ...kernel.agent.exceptions import AgentException
 
+# --------------------------------------------------------
+# Define component
+# --------------------------------------------------------
 class Agent(ABC):
-    
+    """ Represents a system agent """
+    """
+    Agent ID.
+    """
     id = None
+    """
+    Agent state.
+    """
     state = None
-    settings = None    
-    behaviors = None
-    channelsTable = None
-    behaviorsTable = None
-    workerList = None
-    channelList = None
+    """
+    Agent behaviors.
+    """    
+    __behaviors = None
+    """
+    Agent channelsTable.
+    """
+    __channelsTable = None
+    """
+    Agent behaviorsTable.
+    """
+    __behaviorsTable = None
+    """
+    Agent workerList.
+    """
+    __workerList = None
+    """
+    Agent channelList.
+    """
+    __channelList = None
             
-    def __init__(self, arg):
-
-        self.settings = self.setUp(arg)
-        self.id = self.settings['id']
-        self.state = self.settings['state']
-        Adm().addAgent(self)
-
-        self.eventsTable = {}
-        self.channelsTable = {}
-
-        self.workerList = []
-        self.channelList = []
-
-        self.behaviors = self.settings['behaviors']
-        
-        for beh in self.behaviors:            
-            queue = Queue(10)
-            channel = Channel(queue)    
-            worker = BehaviorExe(queue)
-            
-            self.channelsTable[beh['name']] = {'channel' : channel, 'worker': worker}  
-
-            self.workerList.append(worker)
-            self.channelList.append(channel)
-
-            events = beh['events']
-            for evts in events:
-                evts['action'].setAgent(self)
-                self.eventsTable[evts['performative']] = {'behavior' : beh['name'], 'action': evts['action']} 
-
-        super().__init__()
-        
-    @abstractmethod
-    def setUp(self, settings):
-        pass
+    def __init__(self, agentID):
+        """
+        Agent constructor method.
+        @param agentID Unic agent ID
+        """
+        if agentID and isinstance(agentID, str):    
+            self.id = agentID
+            self.state = {}
+            self.__eventsTable = {}
+            self.__channelsTable = {}
+            self.__workerList = []
+            self.__channelList = []
+            self.__behaviors = {}
+            self.__buildAgent()
+            Adm().addAgent(self)
+            super().__init__()
+        else:
+            raise AgentException('[Fatal, __init__]: The agent ID must be a str')
     
+    def __buildAgent(self):
+        """ Build the agent structure """
+        self.setUp()
+        if len(self.__behaviors) > 0: 
+            for key, beh in self.__behaviors.items():            
+                queue = Queue(10)
+                channel = Channel(queue)    
+                worker = BehaviorExe(queue)
+                self.__channelsTable[key] = {'channel' : channel, 'worker': worker}  
+                self.__workerList.append(worker)
+                self.__channelList.append(channel)
+                for evts in beh:
+                    evts['action'].setAgent(self)
+                    self.__eventsTable[evts['event']] = {'behavior' : key, 'action': evts['action']}
+        else:
+            raise AgentException('[Fatal, buildAgent]: Agent behaviors must be defined')
+     
+    @abstractmethod
+    def setUp(self):
+        """ Method to create and initialize the agent structure """
+        pass
+
+    @abstractmethod
+    def shutdown(self):
+        """ Method to free up the resources taken by the agent """
+        pass
+
     def sendEvent(self, event, data):
-        behavior = self.eventsTable[event]
-        channel = self.channelsTable[behavior['behavior']]
-        evt = {'event': event, 'data': data, 'action': behavior['action']}              
-        channel['channel'].sendEvent(evt)
+        """
+        Method that registers an event to the agent.
+        @param event Envent
+        @param Data event
+        @exceptions AgentException
+        """
+        if event in self.__eventsTable: 
+            behavior = self.__eventsTable[event]
+            channel = self.__channelsTable[behavior['behavior']]
+            evt = {'event': event, 'data': data, 'action': behavior['action']}              
+            channel['channel'].sendEvent(evt)
+        else:
+            raise AgentException('pbesa.kernel.agent.sendEvent', 'The agent has not registered the event %s' % event)
     
     def start(self):
-        for w in self.workerList:
+        for w in self.__workerList:
             w.setLet(True)
             w.start()
             
     def wait(self):
-        for w in self.workerList:
+        for w in self.__workerList:
             w.setLet(False)
 
     def finalize(self):
-        for w in self.workerList:
+        for w in self.__workerList:
             w.setAlive(False)
+            w.finalize()
     
     def kill(self):
-        # TODO Call garbachcollector
-        pass
+        """ Remove the agent from the system """
+        self.shutdown()
+        self.id = None
+        self.state = None
+        self.__eventsTable = None
+        self.__channelsTable = None
+        self.finalize()
+        self.__workerList = None
+        self.__channelList = None
+        self.__behaviors = None
 
     def toDTO(self):
         dto = {
@@ -86,5 +152,25 @@ class Agent(ABC):
         rtn = rtn.replace("'", "\"")  
         return rtn
 
-    def getState(self):
-        return self.state
+    def addBehavior(self, behavior):
+        """
+        Add the new behavior to the agent's behavior.
+        @param behavior New behavior
+        """
+        self.__behaviors[behavior] = []
+
+    def bindAction(self, behavior, event, action):
+        """
+        Link behavior to event with action.
+        @param behavior Behavior
+        @param event Event link to behavior
+        @param action Action link to event
+        @exceptions AgentException
+        """
+        if behavior in self.__behaviors:
+            self.__behaviors[behavior].append({
+                'event': event, 
+                'action': action
+            })
+        else:
+            raise AgentException('[Fatal, bindAction]: The behavior "%s" is not associated with the agent. Must be added before behavior' % behavior)

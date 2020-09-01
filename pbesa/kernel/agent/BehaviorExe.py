@@ -1,9 +1,28 @@
-from threading import Thread
+# -*- coding: utf-8 -*-
+"""
+----------------------------------------------------------
+------------------------- PBESA --------------------------
+----------------------------------------------------------
+
+@autor AKEN & SIDRE
+@version 3.0.1
+@date 27/07/20
+"""
+
+# --------------------------------------------------------
+# Define resources
+# --------------------------------------------------------
 import time
 import random
 import traceback
+from threading import Thread
+from ...kernel.agent.exceptions import ActionException
 
+# --------------------------------------------------------
+# Define component
+# --------------------------------------------------------
 class BehaviorExe(Thread):
+    """ Behavior executor component """
 
     let = None
     alive = None
@@ -17,17 +36,22 @@ class BehaviorExe(Thread):
 
     def run(self):
         while self.alive:
+            evt = self.queue.get()
             if self.let:
-                evt = self.queue.get()
                 self.queue.task_done()
                 try:
                     evt['action'].execute(evt['data'])
                 except Exception as e:
-                    print(e)
-                    traceback.print_exc()                
+                    evt['action'].catchException(e)
+            else:
+                time.sleep(1)                
 
     def setLet(self, val):
         self.let = val
 
     def setAlive(self, val):
         self.alive = val
+
+    def finalize(self):
+        self.let = False
+        self.queue.put(None)

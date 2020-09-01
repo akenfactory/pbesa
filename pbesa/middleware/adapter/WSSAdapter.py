@@ -55,7 +55,6 @@ class WSSAdapter(Adapter, Thread):
             print('1:')
             print(queue)
             async for message in websocket:
-                print('**1')
                 request = json.loads(message)
                 dto = {'socket': queue, 'request': request}
                 self.adm.sendEvent('front_controller', 'ws_request', dto)

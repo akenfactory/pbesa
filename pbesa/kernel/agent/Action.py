@@ -1,8 +1,26 @@
+# -*- coding: utf-8 -*-
+"""
+----------------------------------------------------------
+------------------------- PBESA --------------------------
+----------------------------------------------------------
+
+@autor AKEN & SIDRE
+@version 3.0.1
+@date 27/07/20
+"""
+
+# --------------------------------------------------------
+# Define resources
+# --------------------------------------------------------
 from abc import ABC, abstractmethod
 from ...kernel.system.Adm import Adm
 
+# --------------------------------------------------------
+# Define component
+# --------------------------------------------------------
 class Action(ABC):
-    
+    """ Represents the reaction to the occurrence of an event """
+
     id = None
     adm = None
     agent = None
@@ -12,6 +30,10 @@ class Action(ABC):
         
     @abstractmethod
     def execute(self, data):
+        pass
+
+    @abstractmethod
+    def catchException(self, exception):
         pass
 
     def setAgent(self, agent):
