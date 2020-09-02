@@ -1,15 +1,22 @@
 from distutils.core import setup
 import setuptools
 
+from os import path
+this_directory = path.abspath(path.dirname(__file__))
+with open(path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
+
 setup(
   name = 'pbesa',
-  version = '2.3',
+  long_description=long_description,
+  long_description_content_type='text/markdown',
+  version = '3.0.2',
   license='MIT',
   description = 'An artificial intelligence platform for the implementation of multi-agent systems based on python 3 and the BESA model',
   author = 'Enrique Gonzales Guerreo, Cesar Julio Bustacara, Fabian Jose Roldan',
   author_email = 'egonzal@javeriana.edu.co, cbustaca@javeriana.edu.co, fjroldan@akenfactory.com',
   url = 'https://github.com/akenfactory/pbesa.git',
-  download_url = 'https://github.com/akenfactory/pbesa/archive/2.3.tar.gz',
+  download_url = 'https://github.com/akenfactory/pbesa/archive/3.0.2.tar.gz',
   keywords = ['agent', 'multi-agent', 'system', 'artificial', 'intelligence'],
   packages=setuptools.find_packages(),
   classifiers=[  # Optional
@@ -32,5 +39,6 @@ setup(
     'Programming Language :: Python :: 3.4',
     'Programming Language :: Python :: 3.5',
     'Programming Language :: Python :: 3.6',
+    'Programming Language :: Python :: 3.8',
   ],
 )

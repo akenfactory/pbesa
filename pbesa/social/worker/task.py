@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from ...kernel.agent.Action import Action
+from ...social.worker.exceptions import TaskException
 
 # --------------------------------------------------------
 # Define Action
@@ -7,20 +8,31 @@ from ...kernel.agent.Action import Action
 class Task(Action):
     """ An action is a response to the occurrence of an event """
 
+    isPool = False
+    enableResponse = False
+
     def execute(self, data):
         """ 
         Response.
         @param data Event data 
         """
         self.goHead(data)
+        if self.isPool:
+            self.adm.sendEvent(self.agent.state['controller'], 'notify', self.agent.id)
+
+    def activeTimeout(self, time):       
+        self.adm.sendEvent(self.agent.id, 'timeout', {'time': time, 'dto': None})
 
     def sendResponse(self, data):
-        response = {
-            'source': self.agent.id,
-            'result': data
-        }
-        self.adm.sendEvent(self.agent.state['controller'], 'response', response)
-
+        if self.enableResponse:
+            response = {
+                'source': self.agent.id,
+                'result': data
+            }
+            self.adm.sendEvent(self.agent.state['controller'], 'response', response) 
+        else:
+            raise TaskException('[Warn, sendResponse]: The type of control does not allow synchronous responses (see Linear or Pool type Block)')
+    
     @abstractmethod
     def goHead(self, data):
         """

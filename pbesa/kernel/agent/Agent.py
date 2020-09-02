@@ -84,8 +84,11 @@ class Agent(ABC):
                 self.__workerList.append(worker)
                 self.__channelList.append(channel)
                 for evts in beh:
-                    evts['action'].setAgent(self)
-                    self.__eventsTable[evts['event']] = {'behavior' : key, 'action': evts['action']}
+                    try:
+                        evts['action'].setAgent(self)
+                        self.__eventsTable[evts['event']] = {'behavior' : key, 'action': evts['action']}
+                    except:
+                        raise AgentException('[Fatal, buildAgent]: The action must be instantiated: %s' % str(evts['action']))            
         else:
             raise AgentException('[Fatal, buildAgent]: Agent behaviors must be defined')
      
@@ -112,7 +115,7 @@ class Agent(ABC):
             evt = {'event': event, 'data': data, 'action': behavior['action']}              
             channel['channel'].sendEvent(evt)
         else:
-            raise AgentException('pbesa.kernel.agent.sendEvent', 'The agent has not registered the event %s' % event)
+            raise AgentException('[Warn, sendEvent]: The agent has not registered the event %s' % event)
     
     def start(self):
         for w in self.__workerList:
