@@ -16,19 +16,19 @@ class TimeoutAction(Action):
 
     def handler(self):
         """ Timeout handler """
-        if self.agent.state['timeout']:
-            self.agent.state['timeout'] = False
+        if self.agent.isTimeout():
+            self.agent.setTimeout(False)
             self.adm.sendEvent(self.agent.id, 'response', 'timeout')
 
     def execute(self, data):
         """
         @param data
         """
-        if not self.agent.state['timeout']:
-            self.agent.state['timeout'] = True
+        if not self.agent.isTimeout():
+            self.agent.setTimeout(True)
             r = Timer(data['time'], self.handler)
             r.start()
-            
+
     def catchException(self, exception):
         """
         Catch the exception.

@@ -12,8 +12,7 @@ class NotifyFreeAction(Action):
         Response.
         @param data Event data 
         """
-        if not data in self.agent.state['freeList']: 
-            self.agent.state['freeList'].append(data)
+        self.agent.getFreeQueue().put(data)
         
     def catchException(self, exception):
         """

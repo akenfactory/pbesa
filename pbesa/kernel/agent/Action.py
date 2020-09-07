@@ -22,9 +22,11 @@ class Action(ABC):
     """ Represents the reaction to the occurrence of an event """
 
     id = None
+    log = None
     adm = None
     agent = None
-    
+    state = None
+        
     def __init__(self):        
         super().__init__()
         
@@ -37,5 +39,7 @@ class Action(ABC):
         pass
 
     def setAgent(self, agent):
-    	self.adm = Adm()
-    	self.agent = agent
+        self.adm = Adm()
+        self.agent = agent
+        self.log = agent.log
+        self.state = agent.state

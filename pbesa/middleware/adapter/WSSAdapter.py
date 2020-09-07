@@ -52,7 +52,6 @@ class WSSAdapter(Adapter, Thread):
 
     async def requestHandler(self, websocket, path, queue):
         while True:
-            print('1:')
             print(queue)
             async for message in websocket:
                 request = json.loads(message)
@@ -61,12 +60,8 @@ class WSSAdapter(Adapter, Thread):
 
     async def responseHandler(self, websocket, path, queue):
         while True:
-            print('2:')
-            print(queue)
             message = await queue.get()
             await websocket.send(message)
-            print('envio')
-
 
     async def handler(self, websocket, path):
         queue = Queue(10)

@@ -12,8 +12,8 @@ class Delegate(Action):
         Response.
         @param data Event data 
         """
-        ag = self.agent.state['freeList'].pop(0)
-        self.agent.state['requestDict'][ag] = {
+        ag = self.agent.getFreeQueue().get()
+        self.agent.getRequestDict()[ag] = {
             'gateway': data['gateway'],
             'dtoList': []
         }

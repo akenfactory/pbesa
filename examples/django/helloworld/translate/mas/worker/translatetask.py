@@ -8,9 +8,9 @@ class TranslateTask(Task):
         Execute.
         @param data Event data
         """
-        if data == 'Hello':
+        if data == 'hello':
             self.sendResponse('Hola')
-        if data == 'World':
+        if data == 'world':
             self.sendResponse('Mundo')
 
     def catchException(self, exception):

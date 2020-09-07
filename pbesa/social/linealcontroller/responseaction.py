@@ -14,30 +14,32 @@ class ResponseAction(Action):
         """
         if 'timeout' == data:
             results = {}
-            for key, res in self.agent.state['checkDict'].items():
+            for key, res in self.agent.getCheckDict().items():
                 results[key] = res
             self.endOfProcess(results, True)
         else:
-            agentID = data['source']
             result = 'None'
+            agentID = data['source']
             if data['result']:
                 result =  data['result']
-            self.agent.state['checkDict'][agentID] = result
+            
+            self.agent.getCheckDict()[agentID] = result
             if self.check():
                 results = {}
-                for key, res in self.agent.state['checkDict'].items():
+                for key, res in self.agent.getCheckDict().items():
                     results[key] = res
                 self.endOfProcess(results, False)
-        
+
     def check(self):
-        for res in self.agent.state['checkDict'].values():
+        for res in self.agent.getCheckDict().values():
             if not res:
                 return False
         return True
 
     def sendResponse(self, response):
-        self.agent.state['timeout'] = False
-        self.agent.state['gateway'].put(response) 
+        self.agent.setTimeout(False)
+        self.adm.sendEvent(self.agent.id, 'timeout', {'command': 'cancel'})
+        self.agent.getGateway().put(response) 
     
     @abstractmethod
     def endOfProcess(self, results, timeout):

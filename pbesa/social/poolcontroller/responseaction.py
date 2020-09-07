@@ -7,18 +7,24 @@ from ...kernel.agent.Action import Action
 class ResponseAction(Action):
     """ An action is a response to the occurrence of an event """
     
+    def sendResponse(self, request):
+        if len(request['dtoList']) == 1:
+            request['gateway'].put(request['dtoList'][0])
+        else:
+            request['gateway'].put(request['dtoList'])
+
     def execute(self, data):
         """ 
         Response.
         @param data Event data 
         """
-        request = self.agent.state['requestDict'][data['source']]
+        request = self.agent.getRequestDict()[data['source']]
         if 'timeout' in data:
-            request['gateway'].put(request['dtoList'])
+            self.sendResponse(request)
         else:
             request['dtoList'].append(data['result'])
-            if len(request['dtoList']) >= self.agent.state['bufferSize']:
-                request['gateway'].put(request['dtoList'])
+            if len(request['dtoList']) >= self.agent.getBufferSize():
+                self.sendResponse(request)
         
     def catchException(self, exception):
         """

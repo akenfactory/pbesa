@@ -14,21 +14,28 @@ class TimeoutAction(Action):
     @See Action
     """
 
+    __timer = None
+
     def handler(self):
         """ Timeout handler """
-        if self.agent.state['timeout']:
-            self.agent.state['timeout'] = False
+        if self.agent.isTimeout():
+            self.agent.setTimeout(False)
             self.adm.sendEvent(self.agent.id, 'response', 'timeout')
 
     def execute(self, data):
         """
         @param data
         """
-        if not self.agent.state['timeout']:
-            self.agent.state['timeout'] = True
-            r = Timer(data['time'], self.handler)
-            r.start()
-            
+        if data['command'] == 'start':
+            if not self.agent.isTimeout():
+                self.agent.setTimeout(True)
+                self.__timer = Timer(data['time'], self.handler)
+                self.__timer.start()
+        else:
+            if self.__timer:
+                self.__timer.cancel()
+                self.__timer = None
+
     def catchException(self, exception):
         """
         Catch the exception.

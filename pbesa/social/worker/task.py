@@ -8,8 +8,8 @@ from ...social.worker.exceptions import TaskException
 class Task(Action):
     """ An action is a response to the occurrence of an event """
 
-    isPool = False
-    enableResponse = False
+    __isPool = False
+    __enableResponse = False
 
     def execute(self, data):
         """ 
@@ -17,19 +17,20 @@ class Task(Action):
         @param data Event data 
         """
         self.goHead(data)
-        if self.isPool:
-            self.adm.sendEvent(self.agent.state['controller'], 'notify', self.agent.id)
+
+        if self.__isPool:
+            self.adm.sendEvent(self.agent.getController(), 'notify', self.agent.id)
 
     def activeTimeout(self, time):       
         self.adm.sendEvent(self.agent.id, 'timeout', {'time': time, 'dto': None})
 
     def sendResponse(self, data):
-        if self.enableResponse:
+        if self.__enableResponse:
             response = {
                 'source': self.agent.id,
                 'result': data
             }
-            self.adm.sendEvent(self.agent.state['controller'], 'response', response) 
+            self.adm.sendEvent(self.agent.getController(), 'response', response) 
         else:
             raise TaskException('[Warn, sendResponse]: The type of control does not allow synchronous responses (see Linear or Pool type Block)')
     
@@ -40,3 +41,9 @@ class Task(Action):
         @param exception Response exception
         """
         pass
+
+    def setIsPool(self, isPool):
+        self.__isPool = isPool
+    
+    def setEnableResponse(self, enableResponse):
+        self.__enableResponse = enableResponse

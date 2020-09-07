@@ -16,6 +16,7 @@ import time
 import random
 import traceback
 from threading import Thread
+from ...kernel.util.Queue import Queue
 from ...kernel.agent.exceptions import ActionException
 
 # --------------------------------------------------------
@@ -24,34 +25,39 @@ from ...kernel.agent.exceptions import ActionException
 class BehaviorExe(Thread):
     """ Behavior executor component """
 
-    let = None
-    alive = None
-    queue = None
+    __let = False
+    __alive = True
+    __queue = None
+    __stopAgent = Queue(1)
 
     def __init__(self, queue):
-        self.let = False
-        self.alive = True
-        self.queue = queue
+        self.__queue = queue
         super().__init__()
 
     def run(self):
-        while self.alive:
-            evt = self.queue.get()
-            if self.let:
-                self.queue.task_done()
-                try:
+        while self.__alive:
+            evt = self.__queue.get()
+            if not self.__let:
+                self.__stopAgent.get()
+            try:
+                if self.__alive:
                     evt['action'].execute(evt['data'])
-                except Exception as e:
-                    evt['action'].catchException(e)
-            else:
-                time.sleep(1)                
-
+            except Exception as e:
+                traceback.print_exc()
+                evt['action'].catchException(e)
+                self.__let = False        
+            self.__queue.task_done()
+        
     def setLet(self, val):
-        self.let = val
-
+        self.__let = val
+       
+    def notifyLet(self, val):
+        self.__stopAgent.put(None)
+        
     def setAlive(self, val):
-        self.alive = val
+        self.__alive = val
 
     def finalize(self):
-        self.let = False
-        self.queue.put(None)
+        self.__let = False
+        self.__queue.put(None)
+        self.__stopAgent.put(None)

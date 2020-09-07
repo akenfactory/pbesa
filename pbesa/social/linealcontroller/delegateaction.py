@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from .exceptions import LinealException
 from ...kernel.agent.Action import Action
 
 # --------------------------------------------------------
@@ -12,15 +13,19 @@ class DelegateAction(Action):
         Response.
         @param data Event data 
         """
-        self.agent.state['gateway'] = data['gateway']
+        self.agent.setGateway(data['gateway'])
+        self.agent.reset()
         self.delegate(data['dto'])
-    
+        
     def activeTimeout(self, time):
-        self.adm.sendEvent(self.agent.id, 'timeout', {'time': time, 'dto': None})
+        self.adm.sendEvent(self.agent.id, 'timeout', {'time': time, 'command': 'start'})
 
     def toAssign(self, data):
-        ag = self.agent.state['freeList'].pop(0)
-        self.adm.sendEvent(ag, 'task', data)
+        if len(self.agent.getFreeList()) > 0:
+            ag = self.agent.getFreeList().pop(0)
+            self.adm.sendEvent(ag, 'task', data)
+        else:
+            raise LinealException('[Warn, toAssign]: The number of data packets exceeds the number of agents')
 
     @abstractmethod
     def delegate(self, data):

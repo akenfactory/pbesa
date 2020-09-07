@@ -1,4 +1,6 @@
 from abc import abstractmethod
+from ...kernel.util.Queue import Queue
+from .exceptions import LinealException
 from ...kernel.agent.Agent import Agent
 from .timeoutaction import TimeoutAction
 from .delegateaction import DelegateAction
@@ -6,15 +8,16 @@ from .responseaction import ResponseAction
 
 class LinealController(Agent):
     
+    __agentList = []
+    __checkDict = {}
+    __gateway = None
+    __freeList = None
+    __timeout = False
+    __poolSize = None
+    __requestDict = {}
+    
     def setUp(self):
-        self.state = {
-            'social': True,
-            'freeList': [],
-            'agentList': [],
-            'checkDict': {},
-            'gateway': None,
-            'timeout': False
-        }
+        self._social = True
         self.addBehavior('Timeout')
         self.bindAction('Timeout', 'timeout', TimeoutAction())
         self.addBehavior('Delegate')
@@ -28,21 +31,53 @@ class LinealController(Agent):
         self.bindAction('Response', 'response', action)
 
     def suscribeAgent(self, agent):
-        agent.state['controller'] = self.id
-        agent.state['controllerType'] = 'LINEAL'
-        self.state['checkDict'][agent.id] = None
-        self.state['freeList'].append(agent.id)
-        self.state['agentList'].append(agent.id)
+        if not isinstance(agent, Agent):
+            raise LinealException('[Warn, suscribeAgent]: The object to subscribe is not an agent')
+        agent.setController(self.id)
+        agent.setControllerType('LINEAL')
+        self.__checkDict[agent.id] = None
+        #self.__freeQueue.put(agent.id)
+        self.__agentList.append(agent.id)
         actions = agent.getActions()
         for action in actions:
-            action.isPool = False
-            action.enableResponse = True
-    
+            action.setIsPool(False)
+            action.setEnableResponse(True)
+
     def reset(self):
-        self.state['freeList'] = self.state['agentList'].clone()
-        for ag in self.state['freeList']:
-            self.state['checkDict'][ag] = None
+        self.__freeList = []
+        for ag in self.__agentList:
+            self.__checkDict[ag] = None
+            self.__freeList.append(ag)
 
     @abstractmethod
     def build(self):
         pass
+
+    def start(self):
+        if len(self.__agentList) <= 0:
+            raise LinealException('[Warn, toAssign]: Controller agent list is empty. Agents must be subscribed to the controller')
+        super().start()
+
+    def getFreeList(self):
+        return self.__freeList
+
+    def getRequestDict(self):
+        return self.__requestDict
+
+    def getGateway(self):
+        return self.__gateway
+
+    def setGateway(self, gateway):
+        self.__gateway = gateway
+
+    def getCheckDict(self):
+        return self.__checkDict
+    
+    def isTimeout(self):
+        return self.__timeout
+
+    def setTimeout(self, timeout):
+        self.__timeout = timeout
+
+    def isBlock(self):
+        return True

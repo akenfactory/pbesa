@@ -12,6 +12,7 @@
 # --------------------------------------------------------
 # Define resources
 # --------------------------------------------------------
+import logging
 from abc import ABC, abstractmethod
 from ...kernel.system.Adm import Adm
 from ...kernel.util.Queue import Queue
@@ -52,7 +53,15 @@ class Agent(ABC):
     Agent channelList.
     """
     __channelList = None
-            
+    """
+    Said if the is social agent.
+    """
+    _social = False
+    """
+    Logger.
+    """
+    log = None
+
     def __init__(self, agentID):
         """
         Agent constructor method.
@@ -135,6 +144,7 @@ class Agent(ABC):
         """ Remove the agent from the system """
         self.shutdown()
         self.id = None
+        self.log = None
         self.state = None
         self.__eventsTable = None
         self.__channelsTable = None
@@ -177,3 +187,32 @@ class Agent(ABC):
             })
         else:
             raise AgentException('[Fatal, bindAction]: The behavior "%s" is not associated with the agent. Must be added before behavior' % behavior)
+
+    def setUpLogger(self, loggerName, loggerFile, level):
+        """
+        Inicia un componente de seguimiento de la aplicacion.
+        @param loggerName nombre del log
+        @param loggerFile ruta del archivo
+        """
+        l = logging.getLogger(loggerName)
+        formatter = logging.Formatter('[PBESA]: %(asctime)s %(name)-12s %(lineno)d %(levelname)-8s %(message)s')
+        fileHandler = logging.FileHandler(loggerFile, 'w', 'utf-8')
+        fileHandler.setFormatter(formatter)
+        streamHandler = logging.StreamHandler()
+        streamHandler.setFormatter(formatter)
+        l.setLevel(level)
+        l.addHandler(fileHandler)
+        l.addHandler(streamHandler)
+
+    def activeLogger(self, logger, level=logging.INFO):
+        if not level:
+            level = logging.INFO
+        self.setUpLogger(logger, '%s.log' % logger, level)
+        self.log = logging.getLogger(logger)
+    
+    def suscribeLogger(self, logger):
+        self.log = logging.getLogger(logger)
+
+    def isSocial(self):
+        return self._social
+

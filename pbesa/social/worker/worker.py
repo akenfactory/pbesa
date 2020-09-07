@@ -7,12 +7,10 @@ from .timeoutaction import TimeoutAction
 class Worker(Agent):
 
     __taskList = []
+    __controller = None
+    __controllerType = None
 
     def setUp(self):
-        self.state = {
-            'controller': None,
-            'controllerType': None
-        }
         self.addBehavior('Task')
         self.addBehavior('Timeout')
         self.bindAction('Timeout', 'timeout', TimeoutAction())
@@ -25,9 +23,18 @@ class Worker(Agent):
         else:
             raise WorkerException('[Warn, bindTask]: The action must inherit from the task type')
 
-    def getActions(self):
-        return self.__taskList
-
     @abstractmethod
     def build(self):
         pass
+
+    def getActions(self):
+        return self.__taskList
+
+    def getController(self):
+        return self.__controller
+
+    def setController(self, controller):
+        self.__controller = controller
+
+    def setControllerType(self, controllerType):
+        self.__controllerType = controllerType

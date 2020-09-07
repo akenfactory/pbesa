@@ -109,7 +109,8 @@ if __name__ == "__main__":
     # Create the controller agent
     ctrID = 'Jarvis'
     bufferSize = 1
-    ag = TranslateController(ctrID, PoolType.BLOCK, bufferSize)
+    poolSize = 2
+    ag = TranslateController(ctrID, PoolType.BLOCK, bufferSize, poolSize)
     ag.suscribeAgent(w1)
     ag.suscribeAgent(w2)
     ag.start()

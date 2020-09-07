@@ -2,6 +2,7 @@ from .pooltype import PoolType
 from abc import abstractmethod
 from .delegate import Delegate
 from .exceptions import PoolException
+from ...kernel.util.Queue import Queue
 from ...kernel.agent.Agent import Agent
 from .responseaction import ResponseAction
 from .notifyfreeaction import NotifyFreeAction
@@ -9,21 +10,21 @@ from .notifyfreeaction import NotifyFreeAction
 class PoolController(Agent):
 
     __type = None
+    __poolSize = None
+    __requestDict = {}
+    __freeQueue = None
+    __bufferSize = None
     __bufferSize = None
     
-    def __init__(self, agentID, type, bufferSize):
+    def __init__(self, agentID, type, bufferSize, poolSize):
         self.__type = type
+        self.__poolSize = poolSize
         self.__bufferSize = bufferSize
+        self.__freeQueue = Queue(poolSize)
         super().__init__(agentID)
 
     def setUp(self):
-        self.state = {
-            'social': True,
-            'freeList': [],
-            'requestDict': {},
-            'type': self.__type,
-            'bufferSize': self.__bufferSize
-        }
+        self._social = True
         self.addBehavior('Delegate')
         if self.__type == PoolType.BLOCK:
             self.bindAction('Delegate', 'delegate', Delegate())
@@ -40,14 +41,26 @@ class PoolController(Agent):
             raise PoolException('[Warn, bindDelegateAction]: The controller is a blocking type. No need to define delegator')
 
     def suscribeAgent(self, agent):
-        agent.state['controller'] = self.id
-        agent.state['controllerType'] = 'POOL'
-        self.state['freeList'].append(agent.id)
+        agent.setController(self.id)
+        agent.setControllerType('POOL')
+        self.__freeQueue.put(agent.id)
         actions = agent.getActions()
         for action in actions:
-            action.isPool = True
-            action.enableResponse = (self.__type == PoolType.BLOCK)
+            action.setIsPool(True)
+            action.setEnableResponse(self.__type == PoolType.BLOCK)
     
     @abstractmethod
     def build(self):
         pass
+
+    def getFreeQueue(self):
+        return self.__freeQueue
+
+    def getRequestDict(self):
+        return self.__requestDict
+
+    def getBufferSize(self):
+        return self.__bufferSize
+
+    def isBlock(self):
+        return self.__type == PoolType.BLOCK

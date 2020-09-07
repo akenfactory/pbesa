@@ -279,20 +279,40 @@ class Adm(object):
             """
             if agentID in self.agentsTable:
                 ag = self.agentsTable[agentID]
-                if 'social' in ag.state:
-                    queue = Queue(1)
-                    dto = {
-                        'dto': data,
-                        'gateway': queue
-                    }
-                    ag.sendEvent('delegate', dto)
-                    result = queue.get()
-                    queue.task_done()
-                    return result
+                if ag.isSocial():
+                    if ag.isBlock():
+                        queue = Queue(1)
+                        dto = {
+                            'dto': data,
+                            'gateway': queue
+                        }
+                        ag.sendEvent('delegate', dto)
+                        result = queue.get()
+                        queue.task_done()
+                        return result
+                    else:
+                        raise SystemException('[Warn, callAgent]: The "submitAgent" method is only for blocking controllers')
                 else:
                     raise SystemException('[Warn, callAgent]: Only social agents can be invoked in this method')
             else:
-                raise SystemException('[Warn, sendEvent]: An agent with the ID %s could not be found in the system' % agentID) 
+                raise SystemException('[Warn, callAgent]: An agent with the ID %s could not be found in the system' % agentID) 
+
+        def submitAgent(self, agentID, data):
+            """
+            Call a social agent.
+            @param data Call data
+            """
+            if agentID in self.agentsTable:
+                ag = self.agentsTable[agentID]
+                if ag.isSocial():
+                    if not ag.isBlock():
+                        ag.sendEvent('delegate', data)
+                    else:
+                        raise SystemException('[Warn, submitAgent]: The "submitAgent" method is only for non-blocking controllers')
+                else:
+                    raise SystemException('[Warn, submitAgent]: Only social agents can be invoked in this method')
+            else:
+                raise SystemException('[Warn, submitAgent]: An agent with the ID %s could not be found in the system' % agentID) 
 
         def destroy(self):
             for agent in self.agentsTable:

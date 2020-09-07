@@ -58,6 +58,16 @@ pbesa/social/linealcontroller/delegateaction.py
 pbesa/social/linealcontroller/linealcontroller.py
 pbesa/social/linealcontroller/responseaction.py
 pbesa/social/linealcontroller/timeoutaction.py
+pbesa/social/poolcontroller/__init__.py
+pbesa/social/poolcontroller/delegate.py
+pbesa/social/poolcontroller/delegateaction.py
+pbesa/social/poolcontroller/exceptions.py
+pbesa/social/poolcontroller/notifyfreeaction.py
+pbesa/social/poolcontroller/poolcontroller.py
+pbesa/social/poolcontroller/pooltype.py
+pbesa/social/poolcontroller/responseaction.py
 pbesa/social/worker/__init__.py
+pbesa/social/worker/exceptions.py
 pbesa/social/worker/task.py
+pbesa/social/worker/timeoutaction.py
 pbesa/social/worker/worker.py

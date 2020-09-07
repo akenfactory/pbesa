@@ -8,10 +8,13 @@ class TranslateDelegate(DelegateAction):
         Catch the exception.
         @param exception Response exception
         """
-        #
-        tokens = data.split('_')
-        self.toAssign(tokens[0])
-        self.toAssign(tokens[1])
+        tokens = None
+        if '_' in data:
+            tokens = data.split('_')
+        if ' ' in data:
+            tokens = data.split('_')
+        self.toAssign(tokens[0].lower())
+        self.toAssign(tokens[1].lower())
         self.activeTimeout(3)
 
     def catchException(self, exception):
