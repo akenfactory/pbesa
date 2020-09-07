@@ -48,7 +48,7 @@ class SumAction(Action):
         Response.
         @param data Event data 
         """
-        print(self.agent.state['acum'] + data)
+        print(self.state['acum'] + data)
 
     def catchException(self, exception):
         """
@@ -108,4 +108,17 @@ if __name__ == "__main__":
         mas.destroy()
     except:
         traceback.print_exc()
+```
+
+# Integration with Django
+In the examples folder there is a Django project. Given the expression of "Hello world" through GET. The system responds in Spanish.
+
+### It can be started with:
+```
+python manage.py runserver 0.0.0.0:8000 --noreload
+```
+
+### To invoke the functionality you can:
+```
+curl localhost:8000/pbesa/translate?data=Hello_World
 ```
