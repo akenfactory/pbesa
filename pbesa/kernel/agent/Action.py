@@ -20,14 +20,12 @@ from ...kernel.system.Adm import Adm
 # --------------------------------------------------------
 class Action(ABC):
     """ Represents the reaction to the occurrence of an event """
-
-    id = None
-    log = None
-    adm = None
-    agent = None
-    state = None
-        
-    def __init__(self):        
+    
+    def __init__(self):
+        self.id = None
+        self.log = None
+        self.adm = None
+        self.agent = None      
         super().__init__()
         
     @abstractmethod
@@ -42,4 +40,3 @@ class Action(ABC):
         self.adm = Adm()
         self.agent = agent
         self.log = agent.log
-        self.state = agent.state

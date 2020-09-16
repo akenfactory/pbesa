@@ -2,9 +2,8 @@ from abc import ABC, abstractmethod
 
 class World(ABC):
 	
-	agent = None
-
 	def __init__(self):
+		self.agent = None
 		super().__init__()
 	
 	@abstractmethod

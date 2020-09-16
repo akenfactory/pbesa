@@ -25,43 +25,7 @@ from ...kernel.agent.exceptions import AgentException
 # --------------------------------------------------------
 class Agent(ABC):
     """ Represents a system agent """
-    """
-    Agent ID.
-    """
-    id = None
-    """
-    Agent state.
-    """
-    state = None
-    """
-    Agent behaviors.
-    """    
-    __behaviors = None
-    """
-    Agent channelsTable.
-    """
-    __channelsTable = None
-    """
-    Agent behaviorsTable.
-    """
-    __behaviorsTable = None
-    """
-    Agent workerList.
-    """
-    __workerList = None
-    """
-    Agent channelList.
-    """
-    __channelList = None
-    """
-    Said if the is social agent.
-    """
-    _social = False
-    """
-    Logger.
-    """
-    log = None
-
+    
     def __init__(self, agentID):
         """
         Agent constructor method.
@@ -75,6 +39,9 @@ class Agent(ABC):
             self.__workerList = []
             self.__channelList = []
             self.__behaviors = {}
+            self.__behaviorsTable = None
+            self._social = False
+            self.log = None
             self.__buildAgent()
             Adm().addAgent(self)
             super().__init__()
@@ -118,7 +85,7 @@ class Agent(ABC):
         @param Data event
         @exceptions AgentException
         """
-        if event in self.__eventsTable: 
+        if event in self.__eventsTable:    
             behavior = self.__eventsTable[event]
             channel = self.__channelsTable[behavior['behavior']]
             evt = {'event': event, 'data': data, 'action': behavior['action']}              

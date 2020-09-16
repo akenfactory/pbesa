@@ -14,7 +14,9 @@ class TimeoutAction(Action):
     @See Action
     """
 
-    __timer = None
+    def __init__(self):
+        self.__timer = None
+        super().__init__()
 
     def handler(self):
         """ Timeout handler """

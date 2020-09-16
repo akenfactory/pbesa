@@ -17,6 +17,7 @@ import gc
 import sys
 import json
 import socket
+import traceback
 from time import sleep
 from ...kernel.util.Queue import Queue
 from ...kernel.system.Directory import Directory
@@ -50,7 +51,7 @@ class Adm(object):
             """ Default administrator startup """
             self.conf = {
                 "user" : "local",
-                "ip" : "localhost",
+                "host" : "localhost",
                 "port" : 8080,
                 "remote" : None     
             }
@@ -64,48 +65,50 @@ class Adm(object):
             """
             if conf:
                 if not isinstance(conf, str):
-                    if 'user' in conf and 'ip' in conf and 'port' in conf:
-                        if conf['user'] and conf['ip'] and conf['port']:
+                    if 'user' in conf and 'host' in conf and 'port' in conf:
+                        if conf['user'] and conf['host'] and conf['port']:
                             self.conf = conf
                         else:
                             raise SystemException('[Warn, startByConf]: Configuration parameters cannot be null')        
                     else:
-                        raise SystemException('[Warn, startByConf]: A parameter is missing. The parameters are: {user, ip, port, remote(optional)}')
+                        raise SystemException('[Warn, startByConf]: A parameter is missing. The parameters are: {user, host, port, remote(optional)}')
                 else:
                     CONF_DIR = conf
                     fa = FileAdapter({'alias':'JsonAdapter', 'type': 'JSON', 'path': CONF_DIR})
                     fa.setUp()
                     param = fa.request()
                     self.conf = param['conf']
-                if self.conf['remote']:
+                if 'remote' in self.conf and self.conf['remote']:
                     remote = self.conf['remote']                
-                    if remote['mode'] == 'MASTER':
-                        self.remoteAdm = RemoteAdm(remote['ip'], remote['port'])
-                        self.remoteAdm.start()    
+                    if remote['master_mode']:
+                        self.remoteAdm = RemoteAdm(self.conf['host'], self.conf['port'])
+                        self.remoteAdm.start()
                     else:
-                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                        
-                        attempts = remote['attempts']
-                        master = remote['master']
-                        data = '{"command": "REGISTER", "alias":"' + remote['container_alias'] + '", "ip":"' + remote['ip'] + '", "port":"'+ str(remote['port']) +'"}'
-                        received = None
-                        for x in range(1, attempts):                        
-                            try:                            
-                                sock.connect((master['master_ip'], master['master_port']))                            
-                                sock.sendall(bytes(data + "\n", "utf-8"))
-                                received = str(sock.recv(1024), "utf-8")                                                           
-                                if received == 'ACK' + "\n":
-                                    break
-                            except:
-                                sleep(1)
-                            finally:
-                                sock.close()
-                        if received == 'ACK' + "\n":
-                            admListener = AdmListener(remote['ip'], remote['port'])
-                            admListener.start()
+                        if 'container_name' in self.conf and 'master_host' in remote and 'master_port' in remote:
+                            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                        
+                            attempts = remote['attempts']
+                            data = '{"command": "REGISTER", "name":"' + self.conf['container_name'] + '", "host":"' + self.conf['host'] + '", "port":"'+ str(self.conf['port']) +'"}'
+                            received = None
+                            for x in range(1, attempts):                        
+                                try:
+                                    sock.connect((remote['master_host'], remote['master_port']))                            
+                                    sock.sendall(bytes(data + "\n", "utf-8"))
+                                    received = str(sock.recv(1024), "utf-8")                                                           
+                                    if received == 'ACK' + "\n":
+                                        break
+                                except:
+                                    sleep(1)
+                                finally:
+                                    sock.close()
+                            if received == 'ACK' + "\n":
+                                admListener = AdmListener(self.conf['host'], self.conf['port'])
+                                admListener.start()
+                            else:
+                                raise SystemException('[Warn, startByConf]: The administrator could not connect with the administrator master') 
                         else:
-                            raise SystemException('[Warn, startByConf]: The administrator could not connect with the administrator master')            
+                            raise SystemException('[Warn, startByConf]: A parameter is missing. The parameters are: {container_name, master_host, master_port}')
             else:
-                raise SystemException('[Warn, startByConf]: The parameter "conf" cannot be null')
+                raise SystemException('[Warn, startByConf]: The parameter "conf" cannot be NoneType')
 
         def killAgent(self, agent):
             """
@@ -114,7 +117,8 @@ class Adm(object):
             @exceptions SystemException  
             """
             del self.agentsTable[agent.id]
-            Directory().removeAgent(agent.id)
+            directory = Directory()
+            directory.removeAgent(agent.id)
             agent.kill()
             if self.conf['remote']:
                 remote = self.conf['remote']
@@ -151,43 +155,44 @@ class Adm(object):
             @exceptions SystemException  
             """
             if agent.id in self.agentsTable:
-                raise SystemException('[Warn, addAgent]: Agent ID already exists in container')
+                raise SystemException('[Warn, addAgent]: Agent ID: "%s" already exists in container' % agent.id)
             else:
                 self.agentsTable[agent.id] = agent
-                ip = self.conf['ip']
+                host = self.conf['host']
                 port = self.conf['port']
-                if self.conf['remote']:
+                if 'remote' in self.conf and self.conf['remote']:
                     remote = self.conf['remote'] 
-                    ip = remote['ip']
-                    port = remote['port']
+                    #host = remote['host']
+                    #port = remote['port']
                 directory = Directory()
-                directory.addAgent({'agent': agent.id, 'ip': ip, 'port' : port})
-                if self.conf['remote']:
+                agentDTO = {'agent': agent.id, 'host': host, 'port' : port}
+                directory.addAgent(agentDTO)
+                if 'remote' in self.conf and self.conf['remote']:
                     remote = self.conf['remote']
-                    agents = directory.getAgents()
-                    dto = '{"command":"UPDATE", "agents" : ' + json.dumps(agents, ensure_ascii=False) + '}'                
-                    if remote['mode'] == 'MASTER':
+                    if remote['master_mode']:
+                        agents = directory.getAgents()
+                        dto = '{"command":"UPDATE", "agents": ' + json.dumps(agents, ensure_ascii=False) + '}'
                         containers = directory.getContainers()                    
                         for ctn in containers:
                             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                             try:                            
-                                sock.connect( (ctn['ip'], int(ctn['port'])) )                            
+                                sock.connect( (ctn['host'], int(ctn['port'])) )                            
                                 sock.sendall(bytes(dto + "\n", "utf-8"))
                             except:
-                                raise SystemException('[Warn, addAgent]: Could not update container with IP %s' % ctn['ip'])                    
+                                raise SystemException('[Warn, addAgent]: Could not update container with %s host' % ctn['host'])                    
                             finally:
                                 sock.close()
                     else:
-                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        master = remote['master']                                              
+                        dto = '{"command":"ADD", "agent": ' + json.dumps(agentDTO, ensure_ascii=False) + '}'
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                                             
                         try:                            
-                            sock.connect((master['master_ip'], master['master_port']))                            
+                            sock.connect((remote['master_host'], remote['master_port']))                            
                             sock.sendall(bytes(dto + "\n", "utf-8"))
                         except:
                             raise SystemException('[Warn, addAgent]: Could not update container master')
                         finally:
                             sock.close()
-                
+        
         def sendEvent(self, agentID, event, data):
             """
             Send an event to another agent.
@@ -203,31 +208,33 @@ class Adm(object):
                 ag.sendEvent(event, data)
                 return True
             else:
-                if self.conf['remote']:
+                if 'remote' in self.conf and self.conf['remote']:
                     remote = self.conf['remote'] 
                     attempts = remote['attempts']
-                    agents = Directory().getAgents()
-                    for agent in agents:
-                        if agentID == agent['agent']:
-                            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                            aux = str(data)
-                            aux = aux.replace("\'", "\"")                                                
-                            dto = '{"command": "SENDEVENT", "alias":"' + agentID + '", "event":"' + event + '", "data":'+ aux +'}' 
-                            for x in range(1, attempts):                        
-                                try:                            
-                                    sock.connect((agent['ip'], agent['port']))                            
-                                    sock.sendall(bytes(dto + "\n", "utf-8"))
-                                    received = str(sock.recv(1024), "utf-8")                                                            
-                                    if received == 'ACK' + "\n":
-                                        break
-                                except:
-                                    sleep(1)
-                                finally:
-                                    sock.close()
+                    agent = Directory().getAgent(agentID)
+                    received = None
+                    if agent:
+                        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                        aux = str(data)
+                        aux = aux.replace("\'", "\"")                                                
+                        dto = '{"command": "SENDEVENT", "id":"' + agentID + '", "event":"' + event + '", "data":'+ aux +'}' 
+                        for it in range(1, attempts):                        
+                            try:
+                                print('attempt: %d' % it)                            
+                                sock.connect((agent['host'], agent['port']))                            
+                                sock.sendall(bytes(dto + "\n", "utf-8"))
+                                received = str(sock.recv(1024), "utf-8")                                                            
+                                if received == 'ACK' + "\n":
+                                    break
+                            except:
+                                traceback.print_exc()
+                                sleep(1)
+                            finally:
+                                sock.close()
                     if received == 'ACK' + "\n":
                         return True
                     else:
-                        raise SystemException('[Warn, sendEvent]: An agent with the ID %s could not be found in the system' % agentID)                     
+                        raise SystemException('[Warn, sendEvent]: The event could not be sent to the agent with the ID: %s ' % agentID)                     
                 else:
                     raise SystemException('[Warn, sendEvent]: An agent with the ID %s could not be found in the system' % agentID)
 
@@ -255,13 +262,13 @@ class Adm(object):
             print (dto)
             containers = Directory().getContainers()
             for ctn in containers:
-                if container == ctn['alias']:
+                if container == ctn['name']:
                     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                     try:                            
-                        sock.connect( (ctn['ip'], int(ctn['port'])) )                            
+                        sock.connect( (ctn['host'], int(ctn['port'])) )                            
                         sock.sendall(bytes(dto + "\n", "utf-8"))
                     except:
-                        raise SystemException('[Error, moveAgent]: Could not update container with IP %s' % ctn['ip'])
+                        raise SystemException('[Error, moveAgent]: Could not update container with IP %s' % ctn['host'])
                     finally:
                         sock.close()
                     break    
@@ -291,7 +298,7 @@ class Adm(object):
                         queue.task_done()
                         return result
                     else:
-                        raise SystemException('[Warn, callAgent]: The "submitAgent" method is only for blocking controllers')
+                        raise SystemException('[Warn, callAgent]: The "callAgent" method is only for blocking controllers')
                 else:
                     raise SystemException('[Warn, callAgent]: Only social agents can be invoked in this method')
             else:
@@ -313,6 +320,12 @@ class Adm(object):
                     raise SystemException('[Warn, submitAgent]: Only social agents can be invoked in this method')
             else:
                 raise SystemException('[Warn, submitAgent]: An agent with the ID %s could not be found in the system' % agentID) 
+
+        def waitFull(self, containerList):
+            gateway = Queue(1)
+            Directory().setCheckList(gateway, containerList)
+            gateway.get()
+            gateway.task_done()
 
         def destroy(self):
             for agent in self.agentsTable:

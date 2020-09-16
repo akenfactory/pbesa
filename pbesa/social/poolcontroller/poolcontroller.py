@@ -8,19 +8,14 @@ from .responseaction import ResponseAction
 from .notifyfreeaction import NotifyFreeAction
 
 class PoolController(Agent):
-
-    __type = None
-    __poolSize = None
-    __requestDict = {}
-    __freeQueue = None
-    __bufferSize = None
-    __bufferSize = None
     
     def __init__(self, agentID, type, bufferSize, poolSize):
         self.__type = type
         self.__poolSize = poolSize
         self.__bufferSize = bufferSize
+        self.__requestDict = {}
         self.__freeQueue = Queue(poolSize)
+        self.__agentList = []
         super().__init__(agentID)
 
     def setUp(self):
@@ -41,6 +36,7 @@ class PoolController(Agent):
             raise PoolException('[Warn, bindDelegateAction]: The controller is a blocking type. No need to define delegator')
 
     def suscribeAgent(self, agent):
+        self.__agentList.append(agent.id)
         agent.setController(self.id)
         agent.setControllerType('POOL')
         self.__freeQueue.put(agent.id)
@@ -48,6 +44,11 @@ class PoolController(Agent):
         for action in actions:
             action.setIsPool(True)
             action.setEnableResponse(self.__type == PoolType.BLOCK)
+    
+    def broadcastEvent(self, event, data):
+        from pbesa.kernel.system.Adm import Adm
+        for agentID in self.__agentList:
+            Adm().sendEvent(agentID, event, data)
     
     @abstractmethod
     def build(self):

@@ -8,8 +8,10 @@ from ...social.worker.exceptions import TaskException
 class Task(Action):
     """ An action is a response to the occurrence of an event """
 
-    __isPool = False
-    __enableResponse = False
+    def __init__(self):
+        self.__isPool = False
+        self.__enableResponse = False
+        super().__init__()
 
     def execute(self, data):
         """ 

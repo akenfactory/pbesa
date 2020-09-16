@@ -55,6 +55,7 @@ pbesa/middleware/web/__init__.py
 pbesa/social/__init__.py
 pbesa/social/linealcontroller/__init__.py
 pbesa/social/linealcontroller/delegateaction.py
+pbesa/social/linealcontroller/exceptions.py
 pbesa/social/linealcontroller/linealcontroller.py
 pbesa/social/linealcontroller/responseaction.py
 pbesa/social/linealcontroller/timeoutaction.py

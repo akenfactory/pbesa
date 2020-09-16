@@ -6,9 +6,11 @@ from .timeoutaction import TimeoutAction
 
 class Worker(Agent):
 
-    __taskList = []
-    __controller = None
-    __controllerType = None
+    def __init__(self, agentID):
+        self.__taskList = []
+        self.__controller = None
+        self.__controllerType = None    
+        super().__init__(agentID)
 
     def setUp(self):
         self.addBehavior('Task')
@@ -22,6 +24,14 @@ class Worker(Agent):
             self.bindAction('Task', 'task', action)
         else:
             raise WorkerException('[Warn, bindTask]: The action must inherit from the task type')
+
+    def suscribeRemoteController(self, controllerID):
+        self.setController(controllerID)
+        self.setControllerType('LINEAL')
+        actions = self.getActions()
+        for action in actions:
+            action.setIsPool(False)
+            action.setEnableResponse(True)
 
     @abstractmethod
     def build(self):

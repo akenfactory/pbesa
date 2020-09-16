@@ -1,7 +1,5 @@
 class Channel():
 
-    queue = None
-
     def __init__(self, queue):       
         self.queue = queue
         super().__init__()

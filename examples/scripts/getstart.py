@@ -29,7 +29,7 @@ class SumAction(Action):
         Response.
         @param data Event data 
         """
-        print(self.state['acum'] + data)
+        print(self.agent.state['acum'] + data)
 
     def catchException(self, exception):
         """

@@ -1,9 +1,13 @@
+from .exceptions import SystemException
+
 class Directory(object):
     class __Directory:
         
         def __init__(self):
             self.containerList = []
             self.agentList = []
+            self.gateway = None
+            self.checkToList = None
                     
         def addContainer(self, container):
             self.containerList.append(container)
@@ -16,6 +20,15 @@ class Directory(object):
 
         def getAgents(self):
         	return self.agentList
+        
+        def setAgentList(self, agentList):
+            self.agentList = agentList
+            
+        def getAgent(self, agentID):
+            for agent in self.agentList:
+                if agentID == agent['agent']:
+        	        return agent
+            return None
 
         def resetAgentList(self):
         	self.agentList = []
@@ -24,6 +37,19 @@ class Directory(object):
             for ag in self.agentList:
                 if ag['agent'] == agent:
                     self.agentList.remove(ag)
+
+        def setCheckList(self, gateway, checkToList):
+            self.gateway = gateway
+            self.checkToList = checkToList
+        
+        def checkFull(self, containerName):
+            if self.checkToList:
+                if containerName in self.checkToList:
+                    self.checkToList.remove(containerName)
+                    if len(self.checkToList) == 0:
+                        self.gateway.put(None)
+                else:
+                    raise SystemException('Container name: "%s" does not match' % containerName)
                     
     instance = None
     def __new__(cls):

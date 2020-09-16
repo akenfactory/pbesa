@@ -8,14 +8,16 @@ from .responseaction import ResponseAction
 
 class LinealController(Agent):
     
-    __agentList = []
-    __checkDict = {}
-    __gateway = None
-    __freeList = None
-    __timeout = False
-    __poolSize = None
-    __requestDict = {}
-    
+    def __init__(self, agentID):
+        self.__agentList = []
+        self.__checkDict = {}
+        self.__gateway = None
+        self.__freeList = None
+        self.__timeout = False
+        self.__poolSize = None
+        self.__requestDict = {}    
+        super().__init__(agentID)
+
     def setUp(self):
         self._social = True
         self.addBehavior('Timeout')
@@ -36,13 +38,18 @@ class LinealController(Agent):
         agent.setController(self.id)
         agent.setControllerType('LINEAL')
         self.__checkDict[agent.id] = None
-        #self.__freeQueue.put(agent.id)
         self.__agentList.append(agent.id)
         actions = agent.getActions()
         for action in actions:
             action.setIsPool(False)
             action.setEnableResponse(True)
-
+    
+    def suscribeRemoteAgent(self, agentID):
+        if not isinstance(agentID, str):
+            raise LinealException('[Warn, suscribeRemoteAgent]: The object to subscribe is not an agent ID')
+        self.__checkDict[agentID] = None
+        self.__agentList.append(agentID)
+        
     def reset(self):
         self.__freeList = []
         for ag in self.__agentList:

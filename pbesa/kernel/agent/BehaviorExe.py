@@ -25,12 +25,10 @@ from ...kernel.agent.exceptions import ActionException
 class BehaviorExe(Thread):
     """ Behavior executor component """
 
-    __let = False
-    __alive = True
-    __queue = None
-    __stopAgent = Queue(1)
-
     def __init__(self, queue):
+        self.__let = False
+        self.__alive = True
+        self.__stopAgent = Queue(1)
         self.__queue = queue
         super().__init__()
 

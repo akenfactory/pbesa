@@ -22,7 +22,6 @@ class ResponseAction(Action):
             agentID = data['source']
             if data['result']:
                 result =  data['result']
-            
             self.agent.getCheckDict()[agentID] = result
             if self.check():
                 results = {}
