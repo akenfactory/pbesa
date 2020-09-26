@@ -25,6 +25,8 @@ class PoolController(Agent):
             self.bindAction('Delegate', 'delegate', Delegate())
         self.addBehavior('Notify')
         self.bindAction('Notify', 'notify', NotifyFreeAction())
+        # TODO Para el bloquenate debe ser por defecto
+        # Para el no bloquenate ?
         self.addBehavior('Response')
         self.bindAction('Response', 'response', ResponseAction())
         self.build()

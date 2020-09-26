@@ -40,6 +40,7 @@ mas.start()
 ```
 ### Step 2 - Create an action:
 ```
+from pbesa.kernel.agent.Action import Action
 class SumAction(Action):
     """ An action is a response to the occurrence of an event """
 
@@ -60,6 +61,7 @@ class SumAction(Action):
 ### Step 3 - Create an agent:
 - Define Agent
 ```
+from pbesa.kernel.agent.Agent import Agent
 class SumAgent(Agent):
     """ Through a class the concept of agent is defined """
     
@@ -69,7 +71,7 @@ class SumAgent(Agent):
         and resources of the agent
         """
         # Defines the agent state
-        self.state = {
+        self.agent.state = {
             'acum': 7
         }
         # Defines the behavior of the agent. An agent can 

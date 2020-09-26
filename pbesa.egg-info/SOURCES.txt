@@ -50,6 +50,7 @@ pbesa/middleware/remote/AdmListenerHandler.py
 pbesa/middleware/remote/RemoteAdm.py
 pbesa/middleware/remote/RemoteAdmHandler.py
 pbesa/middleware/remote/__init__.py
+pbesa/middleware/remote/exceptions.py
 pbesa/middleware/web/WebAgTK.py
 pbesa/middleware/web/__init__.py
 pbesa/social/__init__.py
