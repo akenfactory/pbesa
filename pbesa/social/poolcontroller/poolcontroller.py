@@ -46,6 +46,12 @@ class PoolController(Agent):
         for action in actions:
             action.setIsPool(True)
             action.setEnableResponse(self.__type == PoolType.BLOCK)
+
+    def suscribeRemoteAgent(self, agentID):
+        if not isinstance(agentID, str):
+            raise PoolException('[Warn, suscribeRemoteAgent]: The object to subscribe is not an agent ID')
+        self.__agentList.append(agentID)
+        self.__freeQueue.put(agentID)
     
     def broadcastEvent(self, event, data):
         from pbesa.kernel.system.Adm import Adm

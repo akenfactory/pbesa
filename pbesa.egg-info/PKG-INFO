@@ -1,12 +1,12 @@
 Metadata-Version: 2.1
 Name: pbesa
-Version: 3.0.4
+Version: 3.0.5
 Summary: An artificial intelligence platform for the implementation of multi-agent systems based on python 3 and the BESA model
 Home-page: https://github.com/akenfactory/pbesa.git
 Author: Enrique Gonzales Guerreo, Cesar Julio Bustacara, Fabian Jose Roldan
 Author-email: egonzal@javeriana.edu.co, cbustaca@javeriana.edu.co, fjroldan@akenfactory.com
 License: MIT
-Download-URL: https://github.com/akenfactory/pbesa/archive/3.0.4.tar.gz
+Download-URL: https://github.com/akenfactory/pbesa/archive/3.0.5.tar.gz
 Description: ## An artificial intelligence platform for the implementation of multi-agent systems based on python 3 and the BESA model
         Actually, Agents and MultiAgent Systems (MAS) are one of the most prominent and attractive technologies in Engineering and
         Computer Science. Agent and MAS technologies, methods, and theories are currently contributing to many diverse domains
@@ -49,6 +49,7 @@ Description: ## An artificial intelligence platform for the implementation of mu
         ```
         ### Step 2 - Create an action:
         ```
+        from pbesa.kernel.agent.Action import Action
         class SumAction(Action):
             """ An action is a response to the occurrence of an event """
         
@@ -69,6 +70,7 @@ Description: ## An artificial intelligence platform for the implementation of mu
         ### Step 3 - Create an agent:
         - Define Agent
         ```
+        from pbesa.kernel.agent.Agent import Agent
         class SumAgent(Agent):
             """ Through a class the concept of agent is defined """
             
@@ -78,7 +80,7 @@ Description: ## An artificial intelligence platform for the implementation of mu
                 and resources of the agent
                 """
                 # Defines the agent state
-                self.state = {
+                self.agent.state = {
                     'acum': 7
                 }
                 # Defines the behavior of the agent. An agent can 
