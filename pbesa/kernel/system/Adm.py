@@ -16,6 +16,7 @@ import os
 import gc
 import sys
 import json
+import base64
 import socket
 import traceback
 from time import sleep
@@ -215,9 +216,13 @@ class Adm(object):
                     received = None
                     if agent:
                         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                        aux = str(data)
-                        aux = aux.replace("\'", "\"")                                                
-                        dto = '{"command": "SENDEVENT", "id":"' + agentID + '", "event":"' + event + '", "data":'+ aux +'}' 
+                        aux = 'None'
+                        if data:
+                            data = json.dumps(data)
+                            data = data.encode('utf-8')
+                            data = base64.b64encode(data)
+                            aux = data.decode('utf-8')                                                
+                        dto = '{"command": "SENDEVENT", "id":"' + agentID + '", "event":"' + event + '", "data":"'+ aux +'"}' 
                         for it in range(1, attempts):                        
                             try:
                                 print('attempt: %d' % it)                            

@@ -23,7 +23,7 @@ class DelegateAction(Action):
             'dtoList': []
         }
         self.adm.sendEvent(ag, 'task', data)
-    
+
     @abstractmethod
     def delegate(self, data):
         """

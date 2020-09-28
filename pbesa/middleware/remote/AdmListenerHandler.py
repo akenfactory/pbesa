@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import base64
 import inspect
 import socketserver
 from time import sleep
@@ -44,6 +45,13 @@ class AdmListenerHandler(socketserver.StreamRequestHandler):
             ag.start()
         if info['command'] == 'SENDEVENT':
             from ...kernel.system.Adm import Adm
-            Adm().sendEvent(info['id'], info['event'], info['data'])
+            data = info['data']
+            aux = None
+            if data and not data == 'None':
+                data = data.encode('utf-8')
+                data = base64.b64decode(data)
+                data = data.decode('utf-8')
+                aux = json.loads(data) 
+            Adm().sendEvent(info['id'], info['event'], aux)
             rsp = 'ACK'
             self.wfile.write(bytes(rsp + "\n", "utf-8"))

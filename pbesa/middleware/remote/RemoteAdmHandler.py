@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 import socket
 import socketserver
 from time import sleep
@@ -58,27 +59,6 @@ class RemoteAdmHandler(socketserver.StreamRequestHandler):
             ag.state = info['state']
             ag.start()
 
-        """    
-        if info['command'] == 'UPDATE':        
-            agents = info['agents']
-            directory = Directory()
-            for agent in agents:
-                directory.resetAgentList()
-                directory.addAgent(agent)
-            containers = directory.getContainers()
-            agents = directory.getAgents()
-            dto = '{"command":"UPDATE", "agents" : ' + json.dumps(agents, ensure_ascii=False) + '}'
-            for ctn in containers:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                try:                            
-                    sock.connect( (ctn['ip'], int(ctn['port'])) )                            
-                    sock.sendall(bytes(dto + "\n", "utf-8"))
-                except:
-                    pass
-                    
-                finally:
-                    sock.close()
-        """
         if info['command'] == 'ADD':
             agent = info['agent']
             host = agent['host']
@@ -100,6 +80,13 @@ class RemoteAdmHandler(socketserver.StreamRequestHandler):
         
         if info['command'] == 'SENDEVENT':
             from ...kernel.system.Adm import Adm
-            Adm().sendEvent(info['id'], info['event'], info['data'])
+            data = info['data']
+            aux = None
+            if data and not data == 'None':
+                data = data.encode('utf-8')
+                data = base64.b64decode(data)
+                data = data.decode('utf-8')
+                aux = json.loads(data)
+            Adm().sendEvent(info['id'], info['event'], data)
             rsp = 'ACK'
             self.wfile.write(bytes(rsp + "\n", "utf-8"))
