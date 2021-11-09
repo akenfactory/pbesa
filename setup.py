@@ -19,6 +19,10 @@ setup(
   download_url = 'https://github.com/akenfactory/pbesa/archive/3.1.0.tar.gz',
   keywords = ['agent', 'multi-agent', 'system', 'artificial', 'intelligence'],
   packages=setuptools.find_packages(),
+  install_requires=[            # I get to this in a second
+    'pymongo==3.12.0',
+    'scrapy==2.5.0',
+  ],
   classifiers=[  # Optional
     # How mature is this project? Common values are
     #   3 - Alpha
