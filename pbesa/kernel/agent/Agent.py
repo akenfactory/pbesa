@@ -39,7 +39,6 @@ class Agent(ABC):
             self.__workerList = []
             self.__channelList = []
             self.__behaviors = {}
-            self.__behaviorsTable = None
             self._social = False
             self.log = None
             self.__buildAgent()
@@ -53,7 +52,7 @@ class Agent(ABC):
         self.setUp()
         if len(self.__behaviors) > 0: 
             for key, beh in self.__behaviors.items():            
-                queue = Queue(10)
+                queue = Queue(100)
                 channel = Channel(queue)    
                 worker = BehaviorExe(queue)
                 self.__channelsTable[key] = {'channel' : channel, 'worker': worker}  
@@ -109,6 +108,8 @@ class Agent(ABC):
     
     def kill(self):
         """ Remove the agent from the system """
+        if 'persistence' in Adm().conf:
+            self.persist()
         self.shutdown()
         self.id = None
         self.log = None
@@ -179,6 +180,11 @@ class Agent(ABC):
     
     def suscribeLogger(self, logger):
         self.log = logging.getLogger(logger)
+
+    def persist(self):
+        db = Adm().getDBConnection()
+        db[self.id].delete_many({})
+        db[self.id].insert(self.state)
 
     def isSocial(self):
         return self._social

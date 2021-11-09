@@ -71,7 +71,7 @@ class SumAgent(Agent):
         and resources of the agent
         """
         # Defines the agent state
-        self.agent.state = {
+        self.state = {
             'acum': 7
         }
         # Defines the behavior of the agent. An agent can 

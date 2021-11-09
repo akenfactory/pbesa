@@ -12,14 +12,13 @@
 # --------------------------------------------------------
 # Define resources
 # --------------------------------------------------------
-import os
 import gc
-import sys
 import json
 import base64
 import socket
 import traceback
 from time import sleep
+from pymongo import MongoClient
 from ...kernel.util.Queue import Queue
 from ...kernel.system.Directory import Directory
 from ...middleware.remote.RemoteAdm import RemoteAdm
@@ -43,11 +42,35 @@ class Adm(object):
             self.adapters = {}
             self.agentsTable = {}
             self.containerList = []
+            self.__db = None
+            self.__client = None
             
         def __str__(self):
             """ To string """
             return repr(self) + self.val
 
+        def connect_database(self):
+            """Connects to mongo database"""
+            database_server = 'localhost'
+            database_port = 27017
+            if 'database_server' in self.conf['persistence']:
+                database_server = self.conf['persistence']['database_server']
+            if 'database_port' in self.conf['persistence']:
+                database_port = self.conf['persistence']['database_port']
+            try:
+                self.__client = MongoClient(database_server, database_port)
+                self.__db = self.__client[self.conf['persistence']['database_name']]
+                # Check if exist mas structure
+                collist = self.__db.list_collection_names()
+                if not "mas" in collist:
+                    self.__db.create_collection("mas")
+                    self.__db.create_collection("agents")
+                    self.__db.create_collection("agenda")
+                    self.__db.create_collection("work_memory")
+            except:
+                name = self.conf['persistence']['database_name']
+                raise SystemException(f'[Error, connect_database]: Cannot connect to database: {name}')
+                
         def start(self):
             """ Default administrator startup """
             self.conf = {
@@ -56,7 +79,7 @@ class Adm(object):
                 "port" : 8080,
                 "remote" : None     
             }
-
+        
         def startByConf(self, conf):            
             """
             Administrator startup by configuration.
@@ -65,20 +88,35 @@ class Adm(object):
             @exceptions SystemException
             """
             if conf:
+                # Sets local everoment from dictionary
                 if not isinstance(conf, str):
                     if 'user' in conf and 'host' in conf and 'port' in conf:
                         if conf['user'] and conf['host'] and conf['port']:
                             self.conf = conf
                         else:
                             raise SystemException('[Warn, startByConf]: Configuration parameters cannot be null')        
-                    else:
-                        raise SystemException('[Warn, startByConf]: A parameter is missing. The parameters are: {user, host, port, remote(optional)}')
+                    if 'persistence' in conf:
+                        if 'database_name' in conf['persistence'] and conf['persistence']['database_name']:
+                            if 'user' in conf and 'host' in conf and 'port' in conf:
+                                self.conf = conf
+                            else:
+                                self.conf = {
+                                    "user" : "local",
+                                    "host" : "localhost",
+                                    "port" : 8080,
+                                    "remote" : None,
+                                    "persistence": conf['persistence']     
+                                }
+                            self.connect_database()
+                        else:
+                            raise SystemException('[Warn, startByConf]: Name of databes is requerried')                        
                 else:
                     CONF_DIR = conf
                     fa = FileAdapter({'alias':'JsonAdapter', 'type': 'JSON', 'path': CONF_DIR})
                     fa.setUp()
                     param = fa.request()
                     self.conf = param['conf']
+                # Sets remote everoment
                 if 'remote' in self.conf and self.conf['remote']:
                     remote = self.conf['remote']                
                     if remote['master_mode']:
@@ -158,13 +196,12 @@ class Adm(object):
             if agent.id in self.agentsTable:
                 raise SystemException('[Warn, addAgent]: Agent ID: "%s" already exists in container' % agent.id)
             else:
+                # Register new agent to container
                 self.agentsTable[agent.id] = agent
                 host = self.conf['host']
                 port = self.conf['port']
                 if 'remote' in self.conf and self.conf['remote']:
                     remote = self.conf['remote'] 
-                    #host = remote['host']
-                    #port = remote['port']
                 directory = Directory()
                 agentDTO = {'agent': agent.id, 'host': host, 'port' : port}
                 directory.addAgent(agentDTO)
@@ -193,7 +230,20 @@ class Adm(object):
                             raise SystemException('[Warn, addAgent]: Could not update container master')
                         finally:
                             sock.close()
-        
+            # Persist agent information
+            if 'persistence' in self.conf:
+                agent_data_list = self.__db["agents"].find({'agent_id': agent.id})
+                if agent_data_list.count() == 0:
+                    # Create new agent document
+                    self.__db["agents"].insert({'agent_id': agent.id})
+                    self.__db.create_collection(agent.id)
+                    # Create new agent state document
+                    self.__db[agent.id].insert(agent.state)
+                else:
+                    # Get current state
+                    state_list = self.__db[agent.id].find({})
+                    agent.state = state_list[0]
+                    
         def sendEvent(self, agentID, event, data):
             """
             Send an event to another agent.
@@ -225,7 +275,6 @@ class Adm(object):
                         dto = '{"command": "SENDEVENT", "id":"' + agentID + '", "event":"' + event + '", "data":"'+ aux +'"}' 
                         for it in range(1, attempts):                        
                             try:
-                                print('attempt: %d' % it)                            
                                 sock.connect((agent['host'], agent['port']))                            
                                 sock.sendall(bytes(dto + "\n", "utf-8"))
                                 received = str(sock.recv(1024), "utf-8")                                                            
@@ -264,7 +313,6 @@ class Adm(object):
             ag = self.agentsTable[agentID]
             ag.finalize()
             dto = ag.toDTO()
-            print (dto)
             containers = Directory().getContainers()
             for ctn in containers:
                 if container == ctn['name']:
@@ -340,7 +388,14 @@ class Adm(object):
             self.adapters = None
             self.agentsTable = None
             self.containerList = None
-            gc.collect()        
+            if self.__db:
+                self.__client.close()
+                self.__client = None
+            self.__db = None
+            gc.collect()
+
+        def getDBConnection(self):
+            return self.__db
     
     # ----------------------------------------------------
     # Defines singleton instance
