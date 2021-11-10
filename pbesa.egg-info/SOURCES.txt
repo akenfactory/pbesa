@@ -79,6 +79,9 @@ pbesa/scrape/SpiderData.py
 pbesa/scrape/__init__.py
 pbesa/scrape/exceptions.py
 pbesa/social/__init__.py
+pbesa/social/delegator/__init__.py
+pbesa/social/delegator/delegator_agent.py
+pbesa/social/delegator/exceptions.py
 pbesa/social/linealcontroller/__init__.py
 pbesa/social/linealcontroller/delegateaction.py
 pbesa/social/linealcontroller/exceptions.py
