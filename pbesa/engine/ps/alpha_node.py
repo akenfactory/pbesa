@@ -62,10 +62,10 @@ class AlphaNode():
                     self.alpha_memory.pop(up[0])
                     self.alpha_memory.append(up[1])
                     db["work_memory"].delete_one({"id": up[1].id})
-                    db["work_memory"].insert(up[1].to_dict())    
+                    db["work_memory"].insert_one(up[1].to_dict())    
             else:
                 self.alpha_memory.append(fact)
-                db["work_memory"].insert(fact.to_dict())
+                db["work_memory"].insert_one(fact.to_dict())
             # Propaga
             if propagate_flag:
                 for child in self.__children:

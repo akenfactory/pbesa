@@ -10,19 +10,19 @@ setup(
   name = 'pbesa',
   long_description=long_description,
   long_description_content_type='text/markdown',
-  version = '3.1.3',
+  version = '3.1.4',
   license='MIT',
   description = 'An artificial intelligence platform for the implementation of multi-agent systems based on python 3 and the BESA model',
   author = 'Enrique Gonzales Guerreo, Cesar Julio Bustacara, Fabian Jose Roldan',
   author_email = 'egonzal@javeriana.edu.co, cbustaca@javeriana.edu.co, fjroldan@akenfactory.com',
   url = 'https://github.com/akenfactory/pbesa.git',
-  download_url = 'https://github.com/akenfactory/pbesa/archive/3.1.3.tar.gz',
+  download_url = 'https://github.com/akenfactory/pbesa/archive/3.1.4.tar.gz',
   keywords = ['agent', 'multi-agent', 'system', 'artificial', 'intelligence'],
   packages=setuptools.find_packages(),
   install_requires=[            # I get to this in a second
     'pymongo==3.12.0',
     'scrapy==2.5.0',
-    'pygame'
+    'pygame==2.1.0'
   ],
   classifiers=[  # Optional
     # How mature is this project? Common values are

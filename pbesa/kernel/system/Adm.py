@@ -232,13 +232,13 @@ class Adm(object):
                             sock.close()
             # Persist agent information
             if 'persistence' in self.conf:
-                agent_data_list = self.__db["agents"].find({'agent_id': agent.id})
-                if agent_data_list.count() == 0:
+                agent_count = self.__db["agents"].count_documents({'agent_id': agent.id})
+                if agent_count == 0:
                     # Create new agent document
-                    self.__db["agents"].insert({'agent_id': agent.id})
+                    self.__db["agents"].insert_one({'agent_id': agent.id})
                     self.__db.create_collection(agent.id)
                     # Create new agent state document
-                    self.__db[agent.id].insert(agent.state)
+                    self.__db[agent.id].insert_one(agent.state)
                 else:
                     # Get current state
                     state_list = self.__db[agent.id].find({})

@@ -47,10 +47,10 @@ class Rete():
                 self.__agenda.pop(up[0])
                 self.__agenda.append(up[1])
                 db["agenda"].delete_one({"id": up[1].id})
-                db["agenda"].insert(up[1].to_dict())    
+                db["agenda"].insert_one(up[1].to_dict())    
         else:
             self.__agenda.append(fact)
-            db["agenda"].insert(fact.to_dict())
+            db["agenda"].insert_one(fact.to_dict())
 
     def run_agenda(self):
         # Propaga los hechos

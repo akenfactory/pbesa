@@ -184,7 +184,7 @@ class Agent(ABC):
     def persist(self):
         db = Adm().getDBConnection()
         db[self.id].delete_many({})
-        db[self.id].insert(self.state)
+        db[self.id].insert_one(self.state)
 
     def isSocial(self):
         return self._social
