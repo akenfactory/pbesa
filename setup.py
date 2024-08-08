@@ -21,7 +21,7 @@ setup(
   packages=setuptools.find_packages(),
   install_requires=[            # I get to this in a second
     'pymongo==3.12.0',
-    'scrapy==2.11.1',
+    'scrapy==2.11.2',
     'pygame==2.1.0'
   ],
   classifiers=[  # Optional
