@@ -1,2 +1,2 @@
-from .SystemFile import SystemFile
-from .TCPServer import TCPServer
+from .system_file import SystemFile
+from .tcp_server import TCPServer

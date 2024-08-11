@@ -10,7 +10,7 @@ class CounterAgent(Worker):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindTask(CounterTask())
+        self.bind_task(CounterTask())
         
     def shutdown(self):
         """ Method to free up the resources taken by the agent """

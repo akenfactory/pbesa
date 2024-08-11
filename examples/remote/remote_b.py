@@ -14,7 +14,7 @@
 # --------------------------------------------------------
 import time
 import traceback
-from pbesa.kernel.system.Adm import Adm
+from pbesa.kernel.system.adm import Adm
 from mas.worker.counteragent import CounterAgent
 
 # --------------------------------------------------------
@@ -38,7 +38,7 @@ if __name__ == "__main__":
             }
         }
         mas = Adm()
-        mas.startByConf(conf)
+        mas.start_by_conf(conf)
 
         # Defines the controller ID
         ctrID = 'Jarvis'
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         for it in range(4, 7):
             wID = 'w_%d' % it
             w = CounterAgent(wID)
-            w.suscribeRemoteController(ctrID)
+            w.suscribe_remote_controller(ctrID)
             w.start()
     except:
         traceback.print_exc()

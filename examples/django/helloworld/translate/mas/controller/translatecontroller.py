@@ -1,8 +1,8 @@
 from .translatedelegate import TranslateDelegate
 from .translateresponse import TranslateResponse
-from pbesa.social.linealcontroller.linealcontroller import LinealController
+from pbesa.social.secuencial_team.secuencial_team import SecuencialController
 
-class TranslateController(LinealController):
+class TranslateController(SecuencialController):
     """ Through a class the concept of agent is defined """
     
     def build(self):
@@ -11,9 +11,9 @@ class TranslateController(LinealController):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindDelegateAction(TranslateDelegate())
+        self.bind_delegate_action(TranslateDelegate())
         # Assign an action to the behavior
-        self.bindResponseAction(TranslateResponse())
+        self.bind_response_action(TranslateResponse())
 
     def shutdown(self):
         """ Method to free up the resources taken by the agent """

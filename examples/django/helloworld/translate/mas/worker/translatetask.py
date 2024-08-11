@@ -3,15 +3,15 @@ from pbesa.social.worker.task import Task
 class TranslateTask(Task):
     """ An action is a response to the occurrence of an event """
 
-    def goHead(self, data):
+    def run(self, data):
         """
         Execute.
         @param data Event data
         """
         if data == 'hello':
-            self.sendResponse('Hola')
+            self.send_response('Hola')
         if data == 'world':
-            self.sendResponse('Mundo')
+            self.send_response('Mundo')
 
     def catchException(self, exception):
         """

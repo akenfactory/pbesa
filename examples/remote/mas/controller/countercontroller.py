@@ -1,8 +1,8 @@
 from .counterdelegate import CounterDelegate
 from .counterresponse import CounterResponse
-from pbesa.social.linealcontroller.linealcontroller import LinealController
+from pbesa.social.secuencial_team.secuencial_team import SecuencialController
 
-class CounterController(LinealController):
+class CounterController(SecuencialController):
     """ Through a class the concept of agent is defined """
     
     def build(self):
@@ -11,9 +11,9 @@ class CounterController(LinealController):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindDelegateAction(CounterDelegate())
+        self.bind_delegate_action(CounterDelegate())
         # Assign an action to the behavior
-        self.bindResponseAction(CounterResponse())
+        self.bind_response_action(CounterResponse())
 
     def shutdown(self):
         """ Method to free up the resources taken by the agent """

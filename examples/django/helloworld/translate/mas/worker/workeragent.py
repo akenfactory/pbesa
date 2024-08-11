@@ -10,7 +10,7 @@ class WorkerAgent(Worker):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindTask(TranslateTask())
+        self.bind_task(TranslateTask())
         
     def shutdown(self):
         """ Method to free up the resources taken by the agent """

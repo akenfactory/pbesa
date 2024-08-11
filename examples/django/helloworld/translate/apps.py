@@ -19,6 +19,6 @@ class TranslateConfig(AppConfig):
         # Create the controller agent
         ctrID = 'Jarvis'
         ag = TranslateController(ctrID)
-        ag.suscribeAgent(w1)
-        ag.suscribeAgent(w2)
+        ag.suscribe_agent(w1)
+        ag.suscribe_agent(w2)
         ag.start()

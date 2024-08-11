@@ -9,3 +9,4 @@
 /src/**/*.owl
 /src/pbesa/middleware/adapter/node_modules
 /src/**/*.joblib
+__pycache__

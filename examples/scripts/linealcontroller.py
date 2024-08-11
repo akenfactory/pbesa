@@ -12,15 +12,12 @@
 # --------------------------------------------------------
 # Define resources
 # --------------------------------------------------------
-import time
-from pbesa.kernel.system.Adm import Adm
-from pbesa.social.worker.task import Task
-from pbesa.kernel.agent.Agent import Agent
-from pbesa.kernel.agent.Action import Action
-from pbesa.social.worker.worker import Worker
-from pbesa.social.linealcontroller.delegateaction import DelegateAction
-from pbesa.social.linealcontroller.responseaction import ResponseAction
-from pbesa.social.linealcontroller.linealcontroller import LinealController
+from pbesa.mas import Adm
+from pbesa.social.worker import Task
+from pbesa.social.worker import Worker
+from pbesa.social.secuencial_team import DelegateAction
+from pbesa.social.secuencial_team import ResponseAction
+from pbesa.social.secuencial_team import SecuencialController
 
 # --------------------------------------------------------
 # Define controller agent
@@ -54,13 +51,13 @@ class TranslateDelegate(DelegateAction):
 class TranslateResponse(ResponseAction):
     """ An action is a response to the occurrence of an event """
 
-    def endOfProcess(self, resultDict, timeout):
+    def end_of_process(self, resultDict, timeout):
         """
         Catch the exception.
         @param exception Response exception
         """
         result = "%s %s" % (resultDict['w1'], resultDict['w2'])
-        self.sendResponse(result)
+        self.send_response(result)
 
     def catchException(self, exception):
         """
@@ -71,7 +68,7 @@ class TranslateResponse(ResponseAction):
 
 # --------------------------------------------------------
 # Define Agent
-class TranslateController(LinealController):
+class TranslateController(SecuencialController):
     """ Through a class the concept of agent is defined """
     
     def build(self):
@@ -80,9 +77,9 @@ class TranslateController(LinealController):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindDelegateAction(TranslateDelegate())
+        self.bind_delegate_action(TranslateDelegate())
         # Assign an action to the behavior
-        self.bindResponseAction(TranslateResponse())
+        self.bind_response_action(TranslateResponse())
 
     def shutdown(self):
         """ Method to free up the resources taken by the agent """
@@ -97,15 +94,15 @@ class TranslateController(LinealController):
 class TranslateTask(Task):
     """ An action is a response to the occurrence of an event """
 
-    def goHead(self, data):
+    def run(self, data):
         """
         Execute.
         @param data Event data
         """
         if data == 'Hello':
-            self.sendResponse('Hola')
+            self.send_response('Hola')
         if data == 'World':
-            self.sendResponse('Mundo')
+            self.send_response('Mundo')
 
     def catchException(self, exception):
         """
@@ -125,7 +122,7 @@ class WorkerAgent(Worker):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindTask(TranslateTask())
+        self.bind_task(TranslateTask())
         
     def shutdown(self):
         """ Method to free up the resources taken by the agent """
@@ -153,12 +150,12 @@ if __name__ == "__main__":
     # Create the controller agent
     ctrID = 'Jarvis'
     ag = TranslateController(ctrID)
-    ag.suscribeAgent(w1)
-    ag.suscribeAgent(w2)
+    ag.suscribe_agent(w1)
+    ag.suscribe_agent(w2)
     ag.start()
 
     # Call
-    result = mas.callAgent(ctrID, "Hello_World")
+    result = mas.call_agent(ctrID, "Hello_World")
 
     # Log
     print(result)

@@ -1,4 +1,4 @@
-from pbesa.social.linealcontroller.delegateaction import DelegateAction
+from pbesa.social.secuencial_team.delegate_action import DelegateAction
 
 class TranslateDelegate(DelegateAction):
     """ An action is a response to the occurrence of an event """

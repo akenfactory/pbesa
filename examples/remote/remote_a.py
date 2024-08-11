@@ -14,7 +14,7 @@
 # --------------------------------------------------------
 import time
 import traceback
-from pbesa.kernel.system.Adm import Adm
+from pbesa.kernel.system.adm import Adm
 from mas.worker.counteragent import CounterAgent
 from mas.controller.countercontroller import CounterController
 
@@ -36,7 +36,7 @@ if __name__ == "__main__":
             }
         }
         mas = Adm()
-        mas.startByConf(conf)
+        mas.start_by_conf(conf)
 
         # Defines the controller ID
         ctrID = 'Jarvis'
@@ -46,7 +46,7 @@ if __name__ == "__main__":
         for it in range(1, 4):
             wID = 'w_%d' % it
             w = CounterAgent(wID)
-            w.suscribeRemoteController(ctrID)
+            w.suscribe_remote_controller(ctrID)
             w.start()
         
         #-------------------------------------------------
@@ -54,15 +54,15 @@ if __name__ == "__main__":
         ag = CounterController(ctrID)
         for it in range(1, 10):
             wID = 'w_%d' % it
-            ag.suscribeRemoteAgent(wID)
+            ag.suscribe_remote_agent(wID)
         ag.start()
 
         # Wait for the start of the slave containers
-        mas.waitFull(['slaveB', 'slaveC'])
+        mas.wait_full(['slaveB', 'slaveC'])
 
         #-------------------------------------------------
         # Start the dynamic
-        result = mas.callAgent(ctrID, None)
+        result = mas.call_agent(ctrID, None)
         print(result)
     except:
         traceback.print_exc()

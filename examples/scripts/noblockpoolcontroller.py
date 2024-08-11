@@ -12,15 +12,13 @@
 # --------------------------------------------------------
 # Define resources
 # --------------------------------------------------------
-import time
-from pbesa.kernel.system.Adm import Adm
-from pbesa.social.worker.task import Task
-from pbesa.kernel.agent.Agent import Agent
-from pbesa.kernel.agent.Action import Action
-from pbesa.social.worker.worker import Worker
-from pbesa.social.poolcontroller.pooltype import PoolType
-from pbesa.social.poolcontroller.delegateaction import DelegateAction
-from pbesa.social.poolcontroller.poolcontroller import PoolController
+
+from pbesa.mas import Adm
+from pbesa.social.worker import Task
+from pbesa.social.worker import Worker
+from pbesa.social.simultaneous_team import PoolType
+from pbesa.social.simultaneous_team import DelegateAction
+from pbesa.social.simultaneous_team import SimultaneousController
 
 # --------------------------------------------------------
 # Define controller agent
@@ -36,8 +34,8 @@ class TranslateDelegate(DelegateAction):
         Catch the exception.
         @param exception Response exception
         """
-        self.toAssign(data[0])
-        self.toAssign(data[1])
+        self.to_assign(data[0])
+        self.to_assign(data[1])
         
     def catchException(self, exception):
         """
@@ -48,7 +46,7 @@ class TranslateDelegate(DelegateAction):
 
 # --------------------------------------------------------
 # Define Agent
-class TranslateController(PoolController):
+class TranslateController(SimultaneousController):
     """ Through a class the concept of agent is defined """
         
     def build(self):
@@ -57,7 +55,7 @@ class TranslateController(PoolController):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindDelegateAction(TranslateDelegate())
+        self.bind_delegate_action(TranslateDelegate())
         
     def shutdown(self):
         """ Method to free up the resources taken by the agent """
@@ -72,7 +70,7 @@ class TranslateController(PoolController):
 class TranslateTask(Task):
     """ An action is a response to the occurrence of an event """
 
-    def goHead(self, data):
+    def run(self, data):
         """
         Execute.
         @param data Event data
@@ -100,7 +98,7 @@ class WorkerAgent(Worker):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindTask(TranslateTask())
+        self.bind_task(TranslateTask())
         
     def shutdown(self):
         """ Method to free up the resources taken by the agent """
@@ -130,10 +128,10 @@ if __name__ == "__main__":
     bufferSize = 1
     poolSize = 2
     ag = TranslateController(ctrID, PoolType.NO_BLOCK, bufferSize, poolSize)
-    ag.suscribeAgent(w1)
-    ag.suscribeAgent(w2)
+    ag.suscribe_agent(w1)
+    ag.suscribe_agent(w2)
     ag.start()
 
     # Call
     data = ['Hello', 'World']
-    mas.submitAgent(ctrID, data)
+    mas.submit_agent(ctrID, data)

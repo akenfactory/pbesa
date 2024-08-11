@@ -12,15 +12,12 @@
 # --------------------------------------------------------
 # Define resources
 # --------------------------------------------------------
-import time
-from pbesa.kernel.system.Adm import Adm
-from pbesa.social.worker.task import Task
-from pbesa.kernel.agent.Agent import Agent
-from pbesa.kernel.agent.Action import Action
-from pbesa.social.worker.worker import Worker
-from pbesa.social.poolcontroller.pooltype import PoolType
-from pbesa.social.poolcontroller.delegateaction import DelegateAction
-from pbesa.social.poolcontroller.poolcontroller import PoolController
+
+from pbesa.mas import Adm
+from pbesa.social.worker import Task
+from pbesa.social.worker import Worker
+from pbesa.social.simultaneous_team import PoolType
+from pbesa.social.simultaneous_team import SimultaneousController
 
 # --------------------------------------------------------
 # Define controller agent
@@ -28,7 +25,7 @@ from pbesa.social.poolcontroller.poolcontroller import PoolController
 
 # --------------------------------------------------------
 # Define Agent
-class TranslateController(PoolController):
+class TranslateController(SimultaneousController):
     """ Through a class the concept of agent is defined """
         
     def build(self):
@@ -51,7 +48,7 @@ class TranslateController(PoolController):
 class TranslateTask(Task):
     """ An action is a response to the occurrence of an event """
 
-    def goHead(self, data):
+    def run(self, data):
         """
         Execute.
         @param data Event data
@@ -61,7 +58,7 @@ class TranslateTask(Task):
             response ='Hola'
         if data == 'World':
             response = 'Mundo'
-        self.sendResponse(response)
+        self.send_response(response)
 
     def catchException(self, exception):
         """
@@ -81,7 +78,7 @@ class WorkerAgent(Worker):
         resources of the agent
         """
         # Assign an action to the behavior
-        self.bindTask(TranslateTask())
+        self.bind_task(TranslateTask())
         
     def shutdown(self):
         """ Method to free up the resources taken by the agent """
@@ -111,12 +108,12 @@ if __name__ == "__main__":
     bufferSize = 1
     poolSize = 2
     ag = TranslateController(ctrID, PoolType.BLOCK, bufferSize, poolSize)
-    ag.suscribeAgent(w1)
-    ag.suscribeAgent(w2)
+    ag.suscribe_agent(w1)
+    ag.suscribe_agent(w2)
     ag.start()
 
     # Call
-    response1 = mas.callAgent(ctrID, 'Hello')
+    response1 = mas.call_agent(ctrID, 'Hello')
     print(response1)
-    response2 = mas.callAgent(ctrID, 'World')
+    response2 = mas.call_agent(ctrID, 'World')
     print(response2)
