@@ -61,10 +61,6 @@ examples/remote/mas/worker/__pycache__/counteragent.cpython-36.pyc
 examples/remote/mas/worker/__pycache__/countertask.cpython-36.pyc
 examples/remote/mas/worker/__pycache__/translatetask.cpython-36.pyc
 examples/remote/mas/worker/__pycache__/workeragent.cpython-36.pyc
-examples/scripts/blockpoolcontroller.py
-examples/scripts/getstart.py
-examples/scripts/linealcontroller.py
-examples/scripts/noblockpoolcontroller.py
 pbesa/__init__.py
 pbesa/mas.py
 pbesa/rational.py
@@ -76,6 +72,7 @@ pbesa.egg-info/top_level.txt
 pbesa/kernel/__init__.py
 pbesa/kernel/adapter.py
 pbesa/kernel/agent.py
+pbesa/kernel/util.py
 pbesa/kernel/world.py
 pbesa/kernel/io/__init__.py
 pbesa/kernel/io/system_file.py
@@ -93,7 +90,8 @@ pbesa/remote/exceptions.py
 pbesa/remote/remote_adm.py
 pbesa/remote/remote_adm_handler.py
 pbesa/social/__init__.py
+pbesa/social/collaborative_team.py
 pbesa/social/delegator.py
-pbesa/social/secuencial_team.py
-pbesa/social/simultaneous_team.py
+pbesa/social/delegator_team.py
+pbesa/social/dispatcher_team.py
 pbesa/social/worker.py

@@ -41,16 +41,16 @@ class TimeoutAction(Action):
 
     def handler(self) -> None:
         """ Timeout handler """
-        if self.agent.isTimeout():
-            self.agent.setTimeout(False)
+        if self.agent.is_timeout():
+            self.agent.set_timeout(False)
             self.adm.send_event(self.agent.id, 'response', 'timeout')
 
     def execute(self, data:any) -> None:
         """ Execute
         @param data: Data
         """
-        if not self.agent.isTimeout():
-            self.agent.setTimeout(True)
+        if not self.agent.is_timeout():
+            self.agent.set_timeout(True)
             r = Timer(data['time'], self.handler)
             r.start()
 
@@ -62,8 +62,8 @@ class Task(Action):
     """ An action is a response to the occurrence of an event """
 
     def __init__(self) -> None:
-        self.__isPool = False
-        self.__enableResponse = False
+        self.__is_pool = False
+        self.__enable_response = False
         super().__init__()
 
     def execute(self, data:any) -> None:
@@ -73,8 +73,8 @@ class Task(Action):
         """
         self.run(data)
 
-        if self.__isPool:
-            self.adm.send_event(self.agent.getController(), 'notify', self.agent.id)
+        if self.__is_pool:
+            self.adm.send_event(self.agent.get_controller(), 'notify', self.agent.id)
 
     def active_timeout(self, time:int) -> None:
         """ Active timeout
@@ -86,12 +86,12 @@ class Task(Action):
         """ Send response
         @param data: Data
         """
-        if self.__enableResponse:
+        if self.__enable_response:
             response = {
                 'source': self.agent.id,
                 'result': data
             }
-            self.adm.send_event(self.agent.getController(), 'response', response) 
+            self.adm.send_event(self.agent.get_controller(), 'response', response) 
         else:
             raise TaskException('[Warn, sendResponse]: The type of control does not allow synchronous responses (see Linear or Pool type Block)')
     
@@ -106,13 +106,13 @@ class Task(Action):
         """ Set is pool
         @param is_pool: Is pool
         """
-        self.__isPool = is_pool
+        self.__is_pool = is_pool
     
     def set_enable_response(self, enable_response) -> None:
         """ Set enable response
         @param enable_response: Enable response
         """
-        self.__enableResponse = enable_response
+        self.__enable_response = enable_response
 
 # --------------------------------------------------------
 # Define Worker component
@@ -125,9 +125,9 @@ class Worker(Agent):
         """ Constructor
         @param agent_id: Agent ID
         """
-        self.__taskList = []
+        self.__task_list = []
         self.__controller = None
-        self.__controllerType = None    
+        self.__controller_type = None    
         super().__init__(agent_id)
 
     def setup(self) -> None:
@@ -142,7 +142,7 @@ class Worker(Agent):
         @param action: Task
         """
         if isinstance(action, Task):
-            self.__taskList.append(action)    
+            self.__task_list.append(action)    
             self.bind_action('Task', 'task', action)
         else:
             raise WorkerException('[Warn, bindTask]: The action must inherit from the task type')
@@ -155,8 +155,8 @@ class Worker(Agent):
         self.set_controller_type('LINEAL')
         actions = self.get_actions()
         for action in actions:
-            action.setIsPool(False)
-            action.setEnableResponse(True)
+            action.set_is_pool(False)
+            action.set_enable_response(True)
 
     @abstractmethod
     def build(self) -> None:
@@ -167,7 +167,7 @@ class Worker(Agent):
         """ Get actions
         @return: Actions
         """
-        return self.__taskList
+        return self.__task_list
 
     def get_controller(self) -> str:
         """ Get controller
@@ -185,4 +185,4 @@ class Worker(Agent):
         """ Set controller type
         @param controller_type: Controller type
         """
-        self.__controllerType = controller_type
+        self.__controller_type = controller_type

@@ -471,7 +471,7 @@ class Adm(object):
             @param socket Socket
             """
             ag = self.agents_table[agent_id]
-            ag.setSocket(socket)
+            ag.set_socket(socket)
 
         def call_agent(self, agent_id:str, data:any) -> any:
             """
@@ -480,8 +480,8 @@ class Adm(object):
             """
             if agent_id in self.agents_table:
                 ag = self.agents_table[agent_id]
-                if ag.isSocial():
-                    if ag.isBlock():
+                if ag.is_social():
+                    if ag.is_block():
                         queue = Queue(1)
                         dto = {
                             'dto': data,
@@ -505,8 +505,8 @@ class Adm(object):
             """
             if agent_id in self.agents_table:
                 ag = self.agents_table[agent_id]
-                if ag.isSocial():
-                    if not ag.isBlock():
+                if ag.is_social():
+                    if not ag.is_block():
                         ag.send_event('delegate', data)
                     else:
                         raise SystemException('[Warn, submitAgent]: The "submitAgent" method is only for non-blocking controllers')

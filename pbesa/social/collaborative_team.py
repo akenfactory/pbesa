@@ -22,7 +22,7 @@ from ..kernel.agent import Action
 # Defines system component exceptions
 # ----------------------------------------------------------
  
-class SecuencialException(Exception):
+class CollaborativeException(Exception):
     """ Base class for exceptions of agent """
     pass
 
@@ -40,8 +40,8 @@ class TimeoutAction(Action):
 
     def handler(self) -> None:
         """ Timeout handler """
-        if self.agent.isTimeout():
-            self.agent.setTimeout(False)
+        if self.agent.is_timeout():
+            self.agent.set_timeout(False)
             self.adm.send_event(self.agent.id, 'response', 'timeout')
 
     def execute(self, data:any) -> None:
@@ -49,8 +49,8 @@ class TimeoutAction(Action):
         @param data: Event data
         """
         if data['command'] == 'start':
-            if not self.agent.isTimeout():
-                self.agent.setTimeout(True)
+            if not self.agent.is_timeout():
+                self.agent.set_timeout(True)
                 self.__timer = Timer(data['time'], self.handler)
                 self.__timer.start()
         else:
@@ -70,7 +70,7 @@ class DelegateAction(Action):
         Response.
         @param data Event data 
         """
-        self.agent.setGateway(data['gateway'])
+        self.agent.set_gateway(data['gateway'])
         self.agent.reset()
         self.delegate(data['dto'])
         
@@ -84,11 +84,11 @@ class DelegateAction(Action):
         """ Assign data to an agent
         @param data: Data
         """
-        if len(self.agent.getFreeList()) > 0:
-            ag = self.agent.getFreeList().pop(0)
+        if len(self.agent.get_free_list()) > 0:
+            ag = self.agent.get_free_list().pop(0)
             self.adm.send_event(ag, 'task', data)
         else:
-            raise SecuencialException('[Warn, toAssign]: The number of data packets exceeds the number of agents')
+            raise CollaborativeException('[Warn, toAssign]: The number of data packets exceeds the number of agents')
 
     @abstractmethod
     def delegate(self, data:any) -> None:
@@ -110,7 +110,7 @@ class ResponseAction(Action):
         """
         if 'timeout' == data:
             results = {}
-            for key, res in self.agent.getCheckDict().items():
+            for key, res in self.agent.get_check_dict().items():
                 results[key] = res
             self.end_of_process(results, True)
         else:
@@ -118,15 +118,15 @@ class ResponseAction(Action):
             agentID = data['source']
             if data['result']:
                 result =  data['result']
-            self.agent.getCheckDict()[agentID] = result
+            self.agent.get_check_dict()[agentID] = result
             if self.check():
                 results = {}
-                for key, res in self.agent.getCheckDict().items():
+                for key, res in self.agent.get_check_dict().items():
                     results[key] = res
                 self.end_of_process(results, False)
 
     def check(self):
-        for res in self.agent.getCheckDict().values():
+        for res in self.agent.get_check_dict().values():
             if not res:
                 return False
         return True
@@ -135,9 +135,9 @@ class ResponseAction(Action):
         """ Send response
         @param response: Response
         """
-        self.agent.setTimeout(False)
+        self.agent.set_timeout(False)
         self.adm.send_event(self.agent.id, 'timeout', {'command': 'cancel'})
-        self.agent.getGateway().put(response) 
+        self.agent.get_gateway().put(response) 
     
     @abstractmethod
     def end_of_process(self, results:dict, timeout:int) -> None:
@@ -151,20 +151,20 @@ class ResponseAction(Action):
 # Define component
 # --------------------------------------------------------
 
-class SecuencialController(Agent):
+class CollaborativeController(Agent):
     """ Represents the agent that delegates the execution of actions to other agents """
     
     def __init__(self, agent_id:str) -> None:
         """ Constructor
         @param agent_id: Agent ID
         """
-        self.__agentList = []
-        self.__checkDict = {}
+        self.__agent_list = []
+        self.__check_dict = {}
         self.__gateway = None
-        self.__freeList = None
+        self.__free_list = None
         self.__timeout = False
         self.__poolSize = None
-        self.__requestDict = {}    
+        self.__request_dict = {}    
         super().__init__(agent_id)
 
     def setup(self) -> None:
@@ -193,31 +193,31 @@ class SecuencialController(Agent):
         @param agent: Agent
         """
         if not isinstance(agent, Agent):
-            raise SecuencialException('[Warn, suscribeAgent]: The object to subscribe is not an agent')
-        agent.setController(self.id)
-        agent.setControllerType('LINEAL')
-        self.__checkDict[agent.id] = None
-        self.__agentList.append(agent.id)
-        actions = agent.getActions()
+            raise CollaborativeException('[Warn, suscribeAgent]: The object to subscribe is not an agent')
+        agent.set_controller(self.id)
+        agent.set_controller_type('LINEAL')
+        self.__check_dict[agent.id] = None
+        self.__agent_list.append(agent.id)
+        actions = agent.get_actions()
         for action in actions:
-            action.setIsPool(False)
-            action.setEnableResponse(True)
+            action.set_is_pool(False)
+            action.set_enable_response(True)
     
     def suscribe_remote_agent(self, agent_id:str) -> None:
         """ Suscribes an agent to the controller
         @param agent_id: Agent ID
         """
         if not isinstance(agent_id, str):
-            raise SecuencialException('[Warn, suscribeRemoteAgent]: The object to subscribe is not an agent ID')
-        self.__checkDict[agent_id] = None
-        self.__agentList.append(agent_id)
+            raise CollaborativeException('[Warn, suscribeRemoteAgent]: The object to subscribe is not an agent ID')
+        self.__check_dict[agent_id] = None
+        self.__agent_list.append(agent_id)
         
     def reset(self) -> None:
         """ Reset method """
-        self.__freeList = []
-        for ag in self.__agentList:
-            self.__checkDict[ag] = None
-            self.__freeList.append(ag)
+        self.__free_list = []
+        for ag in self.__agent_list:
+            self.__check_dict[ag] = None
+            self.__free_list.append(ag)
 
     @abstractmethod
     def build(self) -> None:
@@ -226,21 +226,21 @@ class SecuencialController(Agent):
 
     def start(self) -> None:
         """ Start method """
-        if len(self.__agentList) <= 0:
-            raise SecuencialException('[Warn, toAssign]: Controller agent list is empty. Agents must be subscribed to the controller')
+        if len(self.__agent_list) <= 0:
+            raise CollaborativeException('[Warn, toAssign]: Controller agent list is empty. Agents must be subscribed to the controller')
         super().start()
 
     def get_free_list(self) -> list:
         """ Get free list
         @return: Free list
         """
-        return self.__freeList
+        return self.__free_list
 
     def get_request_dict(self) -> dict:
         """ Get request dictionary
         @return: Request dictionary
         """
-        return self.__requestDict
+        return self.__request_dict
 
     def get_gateway(self) -> str:
         """ Get gateway
@@ -258,7 +258,7 @@ class SecuencialController(Agent):
         """ Get check dictionary
         @return: Check dictionary
         """
-        return self.__checkDict
+        return self.__check_dict
     
     def is_timeout(self) -> bool:
         """ Check if the controller has a timeout

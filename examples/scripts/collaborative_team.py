@@ -12,13 +12,12 @@
 # --------------------------------------------------------
 # Define resources
 # --------------------------------------------------------
-
 from pbesa.mas import Adm
 from pbesa.social.worker import Task
 from pbesa.social.worker import Worker
-from pbesa.social.simultaneous_team import PoolType
-from pbesa.social.simultaneous_team import DelegateAction
-from pbesa.social.simultaneous_team import SimultaneousController
+from pbesa.social.collaborative_team import DelegateAction
+from pbesa.social.collaborative_team import ResponseAction
+from pbesa.social.collaborative_team import CollaborativeController
 
 # --------------------------------------------------------
 # Define controller agent
@@ -34,21 +33,29 @@ class TranslateDelegate(DelegateAction):
         Catch the exception.
         @param exception Response exception
         """
-        self.to_assign(data[0])
-        self.to_assign(data[1])
-        
-    def catchException(self, exception):
+        tokens = data.split('_')
+        self.toAssign(tokens[0])
+        self.toAssign(tokens[1])
+        self.activeTimeout(3)
+
+# --------------------------------------------------------
+# Define Action
+class TranslateResponse(ResponseAction):
+    """ An action is a response to the occurrence of an event """
+
+    def end_of_process(self, resultDict, timeout):
         """
         Catch the exception.
         @param exception Response exception
         """
-        pass
+        result = "%s %s" % (resultDict['w1'], resultDict['w2'])
+        self.send_response(result)
 
 # --------------------------------------------------------
 # Define Agent
-class TranslateController(SimultaneousController):
+class TranslateController(CollaborativeController):
     """ Through a class the concept of agent is defined """
-        
+    
     def build(self):
         """
         Method that allows defining the structure and 
@@ -56,7 +63,9 @@ class TranslateController(SimultaneousController):
         """
         # Assign an action to the behavior
         self.bind_delegate_action(TranslateDelegate())
-        
+        # Assign an action to the behavior
+        self.bind_response_action(TranslateResponse())
+
     def shutdown(self):
         """ Method to free up the resources taken by the agent """
         pass
@@ -76,16 +85,9 @@ class TranslateTask(Task):
         @param data Event data
         """
         if data == 'Hello':
-            print('Hola')
+            self.send_response('Hola')
         if data == 'World':
-            print('Mundo')
-
-    def catchException(self, exception):
-        """
-        Catch the exception.
-        @param exception Response exception
-        """
-        pass
+            self.send_response('Mundo')
 
 # --------------------------------------------------------
 # Define Agent
@@ -125,13 +127,13 @@ if __name__ == "__main__":
     #-----------------------------------------------------
     # Create the controller agent
     ctrID = 'Jarvis'
-    bufferSize = 1
-    poolSize = 2
-    ag = TranslateController(ctrID, PoolType.NO_BLOCK, bufferSize, poolSize)
+    ag = TranslateController(ctrID)
     ag.suscribe_agent(w1)
     ag.suscribe_agent(w2)
     ag.start()
 
     # Call
-    data = ['Hello', 'World']
-    mas.submit_agent(ctrID, data)
+    result = mas.call_agent(ctrID, "Hello_World")
+
+    # Log
+    print(result)
