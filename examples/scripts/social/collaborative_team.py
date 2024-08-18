@@ -45,6 +45,7 @@ from pbesa.social.collaborative_team import CollaborativeController
 
 # --------------------------------------------------------
 # Define Action
+
 class TranslateDelegate(DelegateAction):
     """ An action is a response to the occurrence of an event """
 
@@ -60,6 +61,7 @@ class TranslateDelegate(DelegateAction):
 
 # --------------------------------------------------------
 # Define Action
+
 class TranslateResponse(ResponseAction):
     """ An action is a response to the occurrence of an event """
 
@@ -73,6 +75,7 @@ class TranslateResponse(ResponseAction):
 
 # --------------------------------------------------------
 # Define Agent
+
 class TranslateController(CollaborativeController):
     """ Through a class the concept of agent is defined """
     
@@ -96,6 +99,7 @@ class TranslateController(CollaborativeController):
 
 # --------------------------------------------------------
 # Define Action
+
 class TranslateTask(Task):
     """ An action is a response to the occurrence of an event """
 
@@ -111,6 +115,7 @@ class TranslateTask(Task):
 
 # --------------------------------------------------------
 # Define Agent
+
 class WorkerAgent(Worker):
     """ Through a class the concept of agent is defined """
     
@@ -129,6 +134,7 @@ class WorkerAgent(Worker):
 # --------------------------------------------------------
 # Main
 # --------------------------------------------------------
+
 if __name__ == "__main__":
     """ Main """
     # Initialize the container
