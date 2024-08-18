@@ -15,26 +15,39 @@
 
 from pbesa.mas import Adm
 from pbesa.social.worker import Task
-from pbesa.social.dispatcher_team import build_dispatcher_controller
+from pbesa.social.delegator_team import DelegateAction, build_delegator
 
 # --------------------------------------------------------
-# Define the task of agent
+# Define Delegate Action
+# --------------------------------------------------------
+
+class TranslateDelegate(DelegateAction):
+    """ An action is a response to the occurrence of an event """
+
+    def delegate(self, data):
+        """
+        Catch the exception.
+        @param exception Response exception
+        """
+        self.to_assign(data[0])
+        self.to_assign(data[1])
+
+# --------------------------------------------------------
+# Define the agen tasks 
 # --------------------------------------------------------
 
 class TranslateTask(Task):
-    """ Define the task of the worker agent """
+    """ An action is a response to the occurrence of an event """
 
     def run(self, data):
         """
         Execute.
         @param data Event data
         """
-        response = None
         if data == 'Hello':
-            response ='Hola'
+            print('Hola')
         if data == 'World':
-            response = 'Mundo'
-        self.send_response(response)
+            print('Mundo')
 
 # --------------------------------------------------------
 # Main
@@ -47,10 +60,7 @@ if __name__ == "__main__":
     # Create the team
     agent_count = 2
     ctr_id = "translation-team"
-    translate_task = TranslateTask()
-    agent_ctr = build_dispatcher_controller(ctr_id, agent_count, translate_task)
+    agent_ctr = build_delegator(ctr_id, agent_count, TranslateTask, TranslateDelegate)
     # Make a calls
-    response_1 = mas.call_agent(ctr_id, 'Hello')
-    print(response_1)
-    response_2 = mas.call_agent(ctr_id, 'World')
-    print(response_2)
+    data = ['Hello', 'World']
+    mas.submit_agent(ctr_id, data)

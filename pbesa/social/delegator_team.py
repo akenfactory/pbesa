@@ -8,32 +8,28 @@
 @version 4.0.0
 @date 09/08/24
 
-The Dispatcher Team is a group of artificial intelligence 
-agents coordinated by a controller that acts as a task 
-dispatcher. Unlike teams that consolidate responses, 
-in this system, the controller simply assigns the task to 
-the first available agent. Each agent operates 
-independently and responds through Controller to the 
-client once they have processed the assigned task.
+The Delegator Team consists of one delegator and agents 
+working asynchronously to handle tasks. In this team, a 
+delegator transfers their responsibility to a specific 
+agent who then performs the task. The interaction with 
+the client is asynchronous, meaning the client does not
+receive an immediate response. Agents are responsible for 
+modifying client resources, such as databases or webhooks, 
+making necessary updates or changes according to the 
+request. 
 
-When the client sends a request, the controller directs 
-it to the agent who is free at that moment. If all agents 
-are busy, the request is put on hold until one of them 
-becomes available to handle it. This approach ensures 
-quick and efficient responses, optimizing the use of 
-available resources.
-
-The Dispatcher Team is ideal for scenarios where fast and 
-direct responses are crucial, as it minimizes wait times 
-and simplifies task management, allowing the team to 
-operate in an agile and effective manner.
+This approach allows the delegator to focus on other 
+tasks while agents manage the modifications efficiently. 
+The Delegator Team is ideal for scenarios where the task
+involves changes to specific resources and can be 
+carried out independently from the client interaction 
+process, enhancing team efficiency and flexibility.
 """
 
 # --------------------------------------------------------
 # Define resources
 # --------------------------------------------------------
 
-from enum import Enum
 from abc import abstractmethod
 from .worker import Task, Worker
 from ..kernel.agent import Queue
@@ -41,23 +37,11 @@ from ..kernel.agent import Agent
 from ..kernel.agent import Action
 from ..kernel.util import generate_short_uuid
 
-# --------------------------------------------------------
-# Define PoolType
-# --------------------------------------------------------
-
-class PoolType(Enum):
-    """ Represents the pool type """
-
-    # Block
-    BLOCK = 1
-    # No block
-    NO_BLOCK = 2
-
 # ----------------------------------------------------------
 # Defines system component exceptions
 # ----------------------------------------------------------
  
-class DispatcherException(Exception):
+class DelegatorException(Exception):
     """ Base class for exceptions of agent """
     pass
 
@@ -163,18 +147,16 @@ class ResponseAction(Action):
 # Define component
 # --------------------------------------------------------
 
-class DispatcherController(Agent):
+class Delegator(Agent):
     """ Represents the agent that delegates the execution of actions to other agents """
     
-    def __init__(self, agent_id:str, type:str, buffer_size:int, pool_size:int) -> None:
+    def __init__(self, agent_id:str, buffer_size:int, pool_size:int) -> None:
         """ Constructor
         @param agent_id: Agent ID
-        @param type: Pool type
         @param buffer_size: Buffer size
         @param pool_size: Pool size
         """
         self.__type = type
-        self.__pool_size = pool_size
         self.__buffer_size = buffer_size
         self.__request_dict = {}
         self.__free_queue = Queue(pool_size)
@@ -185,12 +167,8 @@ class DispatcherController(Agent):
         """ Set up method """
         self._social = True
         self.add_behavior('Delegate')
-        if self.__type == PoolType.BLOCK:
-            self.bind_action('Delegate', 'delegate', Delegate())
         self.add_behavior('Notify')
         self.bind_action('Notify', 'notify', NotifyFreeAction())
-        # TODO Para el bloquenate debe ser por defecto
-        # Para el no bloquenate ?
         self.add_behavior('Response')
         self.bind_action('Response', 'response', ResponseAction())
         self.build()
@@ -200,11 +178,8 @@ class DispatcherController(Agent):
         @param action: Delegate action
         @raise PoolException: If the controller is a blocking type
         """
-        if self.__type == PoolType.NO_BLOCK:
-            self.bind_action('Delegate', 'delegate', action)
-        else:
-            raise DispatcherException('[Warn, bindDelegateAction]: The controller is a blocking type. No need to define delegator')
-
+        self.bind_action('Delegate', 'delegate', action)
+        
     def suscribe_agent(self, agent:Agent) -> None:
         """ Suscribes an agent to the controller
         @param agent: Agent
@@ -216,7 +191,7 @@ class DispatcherController(Agent):
         actions = agent.get_actions()
         for action in actions:
             action.set_is_pool(True)
-            action.set_enable_response(self.__type == PoolType.BLOCK)
+            action.set_enable_response(False)
 
     def suscribe_remote_agent(self, agent_id:str) -> None:
         """ Suscribes an agent to the controller
@@ -263,7 +238,7 @@ class DispatcherController(Agent):
         """ Checks if the pool is blocking
         @return: True if the pool is blocking, False otherwise
         """
-        return self.__type == PoolType.BLOCK
+        return False
 
 
 # --------------------------------------------------------
@@ -273,15 +248,27 @@ class DispatcherController(Agent):
 # --------------------------------------------------------
 # Define Dispacher Agent
 
-class DispacherAgent(DispatcherController):
+class DelegatorAgent(Delegator):
     """ Through a class the concept of agent is defined """
+
+    def __init__(self, agent_id:str, buffer_size:int, pool_size:int, delegate:DelegateAction) -> None:
+        """ Constructor
+        @param agent_id: Agent ID
+        @param buffer_size: Buffer size
+        @param pool_size: Pool size
+        @param delegate: Delegate action
+        """
+        # Assign an action to the behavior
+        self.__delegate = delegate
+        super().__init__(agent_id, buffer_size, pool_size)
         
     def build(self):
         """
         Method that allows defining the structure and 
         resources of the agent
         """
-        pass
+        # Assign an action to the behavior
+        self.bind_delegate_action(self.__delegate)
 
     def shutdown(self):
         """ Method to free up the resources taken by the agent """
@@ -316,12 +303,13 @@ class WorkerAgent(Worker):
 # --------------------------------------------------------
 # Define build Method
 
-def build_dispatcher_controller(name_team:str, agent_count, task:Task) -> DispatcherController:
-    """ Builds the controller
+def build_delegator(name_team:str, agent_count, task_class:Task, delegate_class:DelegateAction) -> Delegator:
+    """ Builds the delegator
     @param name_team: Team name
     @param agent_count: Agent count
     @param task: Task
-    @return: Controller
+    @param delegate: Delegate
+    @return: Delegator
     """
     # Define worker agent list
     w_ag_list = []
@@ -330,17 +318,17 @@ def build_dispatcher_controller(name_team:str, agent_count, task:Task) -> Dispat
         short_uuid = generate_short_uuid()
         w_id = f"{name_team}-{i}-{short_uuid}"
         # Create the agent
-        w_ag = WorkerAgent(w_id, task)
+        w_ag = WorkerAgent(w_id, task_class())
         # Start the agent
         w_ag.start()
         # Add the agent to the list
         w_ag_list.append(w_ag)
-    # Create the controller
-    dispatcher = DispacherAgent(name_team, PoolType.BLOCK, 1, agent_count)
-    # Subscribe the agents to the controller
+    # Create the delegator
+    delegator = DelegatorAgent(name_team, 1, agent_count, delegate_class())
+    # Subscribe the agents to the delegator
     for w_ag in w_ag_list:
-        dispatcher.suscribe_agent(w_ag)
-    # Start the controller
-    dispatcher.start()
-    # Return the controller
-    return dispatcher
+        delegator.suscribe_agent(w_ag)
+    # Start the delegator
+    delegator.start()
+    # Return the delegator
+    return delegator

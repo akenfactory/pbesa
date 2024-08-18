@@ -7,6 +7,26 @@
 @autor AKEN
 @version 4.0.0
 @date 09/08/24
+
+The Collaborative Team consists of a controller and a 
+group of agents who work together to complete tasks 
+synchronously with the client. When a client submits a 
+request, the controller breaks down the task into smaller 
+parts, assigning each part to a specific agent. The 
+agents perform their portion of the work and then send 
+their results back to the controller. The controller 
+then consolidates all the partial responses into a single 
+comprehensive response, which is delivered to the client. 
+This structure allows the team to efficiently tackle 
+complex tasks by leveraging the agents' ability to work 
+in parallel. By maintaining a synchronous interaction 
+with the client, the Collaborative Team ensures 
+that requests are managed in an organized and structured 
+manner, providing a unified and cohesive response. 
+This approach is ideal for situations where precision 
+and consistency are essential, as it allows for close 
+coordination among all team members and the delivery of 
+clear and unified results.
 """
 
 # --------------------------------------------------------

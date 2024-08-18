@@ -33,25 +33,13 @@ operate in an agile and effective manner.
 # Define resources
 # --------------------------------------------------------
 
-from enum import Enum
 from abc import abstractmethod
+
 from .worker import Task, Worker
 from ..kernel.agent import Queue
 from ..kernel.agent import Agent
 from ..kernel.agent import Action
 from ..kernel.util import generate_short_uuid
-
-# --------------------------------------------------------
-# Define PoolType
-# --------------------------------------------------------
-
-class PoolType(Enum):
-    """ Represents the pool type """
-
-    # Block
-    BLOCK = 1
-    # No block
-    NO_BLOCK = 2
 
 # ----------------------------------------------------------
 # Defines system component exceptions
@@ -166,15 +154,13 @@ class ResponseAction(Action):
 class DispatcherController(Agent):
     """ Represents the agent that delegates the execution of actions to other agents """
     
-    def __init__(self, agent_id:str, type:str, buffer_size:int, pool_size:int) -> None:
+    def __init__(self, agent_id:str, buffer_size:int, pool_size:int) -> None:
         """ Constructor
         @param agent_id: Agent ID
         @param type: Pool type
         @param buffer_size: Buffer size
         @param pool_size: Pool size
         """
-        self.__type = type
-        self.__pool_size = pool_size
         self.__buffer_size = buffer_size
         self.__request_dict = {}
         self.__free_queue = Queue(pool_size)
@@ -185,25 +171,12 @@ class DispatcherController(Agent):
         """ Set up method """
         self._social = True
         self.add_behavior('Delegate')
-        if self.__type == PoolType.BLOCK:
-            self.bind_action('Delegate', 'delegate', Delegate())
+        self.bind_action('Delegate', 'delegate', Delegate())
         self.add_behavior('Notify')
         self.bind_action('Notify', 'notify', NotifyFreeAction())
-        # TODO Para el bloquenate debe ser por defecto
-        # Para el no bloquenate ?
         self.add_behavior('Response')
         self.bind_action('Response', 'response', ResponseAction())
         self.build()
-
-    def bind_delegate_action(self, action:Delegate) -> None:
-        """ Binds the delegate action to the agent
-        @param action: Delegate action
-        @raise PoolException: If the controller is a blocking type
-        """
-        if self.__type == PoolType.NO_BLOCK:
-            self.bind_action('Delegate', 'delegate', action)
-        else:
-            raise DispatcherException('[Warn, bindDelegateAction]: The controller is a blocking type. No need to define delegator')
 
     def suscribe_agent(self, agent:Agent) -> None:
         """ Suscribes an agent to the controller
@@ -216,7 +189,7 @@ class DispatcherController(Agent):
         actions = agent.get_actions()
         for action in actions:
             action.set_is_pool(True)
-            action.set_enable_response(self.__type == PoolType.BLOCK)
+            action.set_enable_response(True)
 
     def suscribe_remote_agent(self, agent_id:str) -> None:
         """ Suscribes an agent to the controller
@@ -263,7 +236,7 @@ class DispatcherController(Agent):
         """ Checks if the pool is blocking
         @return: True if the pool is blocking, False otherwise
         """
-        return self.__type == PoolType.BLOCK
+        return True
 
 
 # --------------------------------------------------------
@@ -316,26 +289,27 @@ class WorkerAgent(Worker):
 # --------------------------------------------------------
 # Define build Method
 
-def build_dispatcher_controller(name_team:str, agent_count, task:Task) -> DispatcherController:
+def build_dispatcher_controller(name_team:str, agent_count, task_class:Task) -> DispatcherController:
     """ Builds the controller
     @param name_team: Team name
     @param agent_count: Agent count
-    @param task: Task
+    @param task_class: Task Class
     @return: Controller
     """
     # Define worker agent list
     w_ag_list = []
     # Iterate over the number of agents
     for i in range(agent_count):
-        w_id = f"{name_team}-ag-{i}"
+        short_uuid = generate_short_uuid()
+        w_id = f"worker-agent-{i}-{short_uuid}"
         # Create the agent
-        w_ag = WorkerAgent(w_id, task)
+        w_ag = WorkerAgent(w_id, task_class())
         # Start the agent
         w_ag.start()
         # Add the agent to the list
         w_ag_list.append(w_ag)
     # Create the controller
-    dispatcher = DispacherAgent(name_team, PoolType.BLOCK, 1, agent_count)
+    dispatcher = DispacherAgent(name_team, 1, agent_count)
     # Subscribe the agents to the controller
     for w_ag in w_ag_list:
         dispatcher.suscribe_agent(w_ag)

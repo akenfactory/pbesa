@@ -31,4 +31,8 @@ def generate_short_uuid(length=5):
     base64_str = base64.urlsafe_b64encode(uuid_bytes).decode('utf-8').rstrip('=')
     
     # Return a substring of the desired length
-    return base64_str[:length]
+    short_uuid = base64_str[:length]
+    short_uuid.replace('_', 'A')
+    short_uuid.replace('-', 'B')
+    short_uuid.replace('=', 'C')
+    return short_uuid.lower()
