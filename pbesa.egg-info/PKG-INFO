@@ -4,3 +4,4 @@ Version: 4.0.0
 License-File: LICENSE
 License-File: LICENSE.txt
 Requires-Dist: pymongo>=4.6.3
+Requires-Dist: requests>=2.32.3
