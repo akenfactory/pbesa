@@ -62,8 +62,8 @@ examples/remote/mas/worker/__pycache__/countertask.cpython-36.pyc
 examples/remote/mas/worker/__pycache__/translatetask.cpython-36.pyc
 examples/remote/mas/worker/__pycache__/workeragent.cpython-36.pyc
 pbesa/__init__.py
+pbesa/cognitive.py
 pbesa/mas.py
-pbesa/rational.py
 pbesa.egg-info/PKG-INFO
 pbesa.egg-info/SOURCES.txt
 pbesa.egg-info/dependency_links.txt

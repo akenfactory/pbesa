@@ -32,22 +32,24 @@ class Model(ABC):
         """
         return self.model
     
-    def set_model(self, model:any) -> None:
-        """ Set model method
-        :param model: model
+    @abstractmethod
+    def load_model(self, config:dict) -> None:
+        """ Load model method
+        :param config: config
         """ 
-        self.model = model
+        pass
 
     @abstractmethod
-    def train_model(self, data:any) -> any:
+    def train_model(self, model_config:dict, data:any) -> any:
         """ Train model method
+        :param model_config: model_config
         :param data: data
         :return: any
         """
         pass
 
     @abstractmethod
-    def validate_model(self, data:any) -> any:
+    def evaluate_model(self, data:any) -> any:
         """ Validate model method
         :param data: data
         :return: any
@@ -55,8 +57,9 @@ class Model(ABC):
         pass
 
     @abstractmethod
-    def fit_model(self, data:any) -> any:
+    def fit_model(self, model_config:dict, data:any) -> any:
         """ Fit model method
+        :param model_config: model_config
         :param data: data
         :return: any
         """

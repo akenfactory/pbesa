@@ -11,3 +11,4 @@
 /src/**/*.joblib
 __pycache__
 .vscode
+*.h5
