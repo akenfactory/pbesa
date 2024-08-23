@@ -44,6 +44,7 @@ from pbesa.social.dispatcher_team import DispatcherController
 
 # --------------------------------------------------------
 # Define Agent
+
 class TranslateController(DispatcherController):
     """ Through a class the concept of agent is defined """
         
@@ -64,6 +65,7 @@ class TranslateController(DispatcherController):
 
 # --------------------------------------------------------
 # Define Action
+
 class TranslateTask(Task):
     """ An action is a response to the occurrence of an event """
 
@@ -81,6 +83,7 @@ class TranslateTask(Task):
 
 # --------------------------------------------------------
 # Define Agent
+
 class WorkerAgent(Worker):
     """ Through a class the concept of agent is defined """
     
@@ -99,6 +102,7 @@ class WorkerAgent(Worker):
 # --------------------------------------------------------
 # Main
 # --------------------------------------------------------
+
 if __name__ == "__main__":
     """ Main """
     # Initialize the container
