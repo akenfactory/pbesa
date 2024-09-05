@@ -17,6 +17,61 @@ import traceback
 from abc import ABC, abstractmethod
 
 # --------------------------------------------------------
+# Define OpenAI Adapter component
+# --------------------------------------------------------
+
+class OpenAIAdapter():
+
+    def __init__(self, model:any, model_conf:dict, work_memory:list) -> None:
+        """ Constructor method
+        :param model: model
+        :param model_conf: model_conf
+        :param work_memory: work_memory
+        """
+        self.model:any = model
+        self.model_conf:dict = model_conf
+        self.__work_memory:list = work_memory
+
+    def generate(self) -> str:
+        """ Generate method
+        :return: str
+        """
+        try:
+            # Genera texto con OpenAI.
+            self.model.api_key = self.model_conf['API_KEY']
+            engine = self.model_conf['OPENAI_ENGINE']
+            response = self.model.ChatCompletion.create(
+                model = engine,
+                messages = self.__work_memory
+            )
+            # Verifica si se obtuvo respuesta.
+            if response['choices'][0]['finish_reason'] == 'completed' or response['choices'][0]['finish_reason'] == 'stop':
+                res = response['choices'][0]['message']['content']
+                try:
+                    if not res or res == 'null' or res == 'N/A' or 'N/A' in res:
+                        #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
+                        print("OpenAI response not completed")
+                        return None
+                    #self.log.info("OpenAI response completed", extra={'log_data': {'gpt_response': response}})
+                    print("OpenAI response completed")
+                    self.__work_memory.append({"role": "assistant", "content": res})
+                    return res
+                except:
+                    #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
+                    print("OpenAI response not completed")
+                    return None
+            else:
+                #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
+                print("OpenAI response not completed")
+                return None
+        except Exception as e:
+            trace_err = traceback.format_exc()
+            err = str(e) + " - " + trace_err
+            #self.log.error(err)
+            print(err)
+            return None
+
+# --------------------------------------------------------
 # Define Model component
 # --------------------------------------------------------
 
@@ -106,6 +161,81 @@ class Generative(ABC):
         pass
 
 # --------------------------------------------------------
+# Define Augmented Generation component
+# --------------------------------------------------------
+
+class AugmentedGeneration(ABC):
+    """ Augmented Generation """
+
+    def __init__(self) -> None:
+        """ Constructor method """
+        self.model:any = None
+        self.model_conf:dict = None
+        self.__work_memory:list = []
+        # Define role
+        role = self.define_role() 
+        self.__role = role.strip() if role else "Undefined"
+        # Define model adapter
+        self.__model_adapter = None
+        # Set up model
+        self.set_up_model()
+
+    def set_up_model(self):
+        """ Set up model method """
+        # Define role
+        self.__work_memory.append({"role": "system", "content": self.__role})
+        
+    def get_model(self) -> any:
+        """ Get model method 
+        :return: model
+        """
+        return self.model
+    
+    def load_model(self, model:any, model_conf:dict) -> None:
+        """ Set model method
+        :param model: model
+        :param model_conf: Configuration
+        """
+        self.model = model
+        self.model_conf = model_conf
+        self.__model_adapter = OpenAIAdapter(self.model, self.model_conf, self.__work_memory)
+    
+    def update_world_model(self, fact:str) -> None:
+        """ Update world model method
+        :param fact: fact
+        :return: str
+        """
+        self.__work_memory.append({"role": "user", "content": fact})
+
+    def reset(self) -> None:
+        """ Reset method """
+        self.__work_memory = []
+        # Set up model
+        self.set_up_model()
+
+    def derive(self, query) -> str:
+        """ Generate method
+        :return: str
+        """
+        content = self.retrieval(query)
+        self.__work_memory.append({"role": "system", "content": f"A partir de la siguiente información: {content} responde a la siguiente consulta:"})
+        self.__work_memory.append({"role": "user", "content": query})
+        return self.__model_adapter.generate()
+
+    @abstractmethod
+    def define_role(self) -> str:
+        """ Set role set method """
+        pass
+
+    @abstractmethod
+    def retrieval(self, query) -> str:
+        """ Set retrieval method
+        :param query: query
+        :return: str
+        """
+        pass
+
+# --------------------------------------------------------
 # Define Rational component
 # --------------------------------------------------------
 
@@ -156,6 +286,8 @@ class Production(ABC):
         self.__rule_set = self.define_rule_set()
         # Define example
         self.__example = self.define_example()
+        # Define model adapter
+        self.__model_adapter = None
         # Set up model
         self.set_up_model()
 
@@ -184,6 +316,7 @@ class Production(ABC):
         """
         self.model = model
         self.model_conf = model_conf
+        self.__model_adapter = OpenAIAdapter(self.model, self.model_conf, self.__work_memory)
 
     def get_rule_set(self) -> list:
         """ Get rule set method
@@ -198,44 +331,17 @@ class Production(ABC):
         """
         self.__work_memory.append({"role": "user", "content": fact})
 
+    def reset(self) -> None:
+        """ Reset method """
+        self.__work_memory = []
+        # Set up model
+        self.set_up_model()
+
     def derive(self) -> str:
         """ Generate method
         :return: str
         """
-        try:
-            # Genera texto con OpenAI.
-            self.model.api_key = self.model_conf['API_KEY']
-            engine = self.model_conf['OPENAI_ENGINE']
-            response = self.model.ChatCompletion.create(
-                model = engine,
-                messages = self.__work_memory
-            )
-            # Verifica si se obtuvo respuesta.
-            if response['choices'][0]['finish_reason'] == 'completed' or response['choices'][0]['finish_reason'] == 'stop':
-                res = response['choices'][0]['message']['content']
-                try:
-                    if not res or res == 'null' or res == 'N/A' or 'N/A' in res:
-                        #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                        print("OpenAI response not completed")
-                        return None
-                    #self.log.info("OpenAI response completed", extra={'log_data': {'gpt_response': response}})
-                    print("OpenAI response completed")
-                    self.__work_memory.append({"role": "assistant", "content": res})
-                    return res
-                except:
-                    #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                    print("OpenAI response not completed")
-                    return None
-            else:
-                #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                print("OpenAI response not completed")
-                return None
-        except Exception as e:
-            trace_err = traceback.format_exc()
-            err = str(e) + " - " + trace_err
-            #self.log.error(err)
-            print(err)
-            return None
+        return self.__model_adapter.generate()
 
     @abstractmethod
     def define_role(self) -> str:

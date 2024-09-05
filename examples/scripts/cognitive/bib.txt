@@ -1,0 +1,25 @@
+Fuente: https://es.wikipedia.org/wiki/Gato_de_Schr%C3%B6dinger
+
+El gato de Schrödinger es un experimento mental, a veces descrito como una paradoja, ideado por el físico austriaco-irlandés Erwin Schrödinger en 1935, durante el curso de discusiones con Albert Einstein. Ilustra lo que él vio como el problema de la interpretación de Copenhague de la mecánica cuántica. El escenario presenta un gato hipotético que puede estar simultáneamente vivo y simultáneamente muerto, un estado conocido como superposición cuántica, como resultado de estar vinculado a un evento subatómico aleatorio que puede ocurrir o no.
+
+El experimento mental también se presenta a menudo en discusiones teóricas sobre las interpretaciones de la mecánica cuántica, particularmente en situaciones que involucran el problema de la medición. Schrödinger acuñó el término Verschränkung (entrelazamiento cuántico) durante el desarrollo del experimento mental.
+
+Origen y motivación
+
+Schrödinger pretendía que su experimento para matar al gato fuera una discusión de la paradoja EPR, llamada así por sus autores Einstein, Podolsky y Rosen en 1935. La paradoja EPR destacó la naturaleza contraintuitiva de las superposiciones cuánticas, en las que un sistema cuántico como un átomo o el fotón puede existir como una combinación de múltiples estados correspondientes a diferentes resultados posibles.
+
+La teoría predominante, llamada interpretación de Copenhague dice que un sistema cuántico permanece en superposición hasta que interactúa con el mundo externo o es observado por él. Cuando esto sucede, la superposición colapsa en uno u otro de los posibles estados definidos. El experimento EPR muestra que un sistema con múltiples partículas separadas por grandes distancias puede estar en tal superposición. Schrödinger y Einstein intercambiaron cartas sobre el artículo EPR de Einstein, en el curso del cual Einstein señaló que el estado de un barril inestable de pólvora, después de un tiempo, contendrá una superposición de estados explotados y sin explotar.
+
+Para ilustrar mejor, Schrödinger describió cómo se podría, en principio, crear una superposición en un sistema a gran escala haciéndolo dependiente de una partícula cuántica que estaba en una superposición. Propuso un escenario con un gato en una cámara de acero cerrada, en el que la vida o la muerte del gato dependía del estado de un átomo radiactivo, si se había descompuesto y emitido radiación o no. Según Schrödinger, la interpretación de Copenhague implica que el gato permanece vivo y muerto hasta que se observa el estado. Schrödinger no deseaba promover la idea de gatos muertos y vivos como una posibilidad seria; por el contrario, pretendía que el ejemplo ilustrara el absurdo de la visión existente de la mecánica cuántica.
+
+Sin embargo, desde la época de Schrödinger, los físicos han propuesto otras interpretaciones de la mecánica cuántica, algunos de los cuales consideran que la superposición del gato «vivo y muerto» es bastante real. Intentado como una crítica de la interpretación de Copenhague (la ortodoxia predominante en 1935), el experimento mental del gato de Schrödinger sigue siendo una piedra de toque para las interpretaciones modernas de la mecánica cuántica y puede usarse para ilustrar y comparar sus fortalezas y debilidades.
+
+El experimento descrito es puramente teórico y no se sabe que la máquina propuesta haya sido construida. Sin embargo, se han realizado experimentos exitosos que involucran principios similares, por ejemplo, superposiciones de objetos relativamente grandes (según los estándares de la física cuántica).13​ Estos experimentos no muestran que un objeto del tamaño de un gato pueda superponerse, pero el límite superior conocido de los «estados felinos» ha sido nombrado así en su honor. En muchos casos, el estado es de corta duración, incluso cuando se enfría casi al cero absoluto.
+
+Se ha logrado un "estado de gato" con fotones.
+Se ha atrapado un ion de berilio en un estado superpuesto.
+Un experimento que involucra un dispositivo superconductor de interferencia cuántica («SQUID») se ha relacionado con el tema del experimento mental: «El estado de superposición no corresponde a mil millones de electrones que fluyen en una dirección y mil millones de otros fluyen en la otra dirección. Los electrones superconductores se mueven en masa. Todos los electrones superconductores en el SQUID fluyen en ambos sentidos alrededor del bucle a la vez cuando están en el estado de gato de Schrödinger».
+Se ha construido un «diapasón» piezoeléctrico, que se puede colocar en una superposición de estados vibrantes y no vibrantes. El resonador comprende aproximadamente 10 billones de átomos.
+Se ha propuesto un experimento con un virus de la gripe.
+Se ha propuesto un experimento con una bacteria y un oscilador electromecánico.
+En computación cuántica, la frase «estado de gato» a veces se refiere al estado GHZ (Greenberger–Horne–Zeilinger), en el que varios qubits están en una superposición igual de todos y todos
