@@ -93,5 +93,7 @@ pbesa/social/__init__.py
 pbesa/social/collaborative_team.py
 pbesa/social/delegator.py
 pbesa/social/delegator_team.py
+pbesa/social/dialog.py
 pbesa/social/dispatcher_team.py
+pbesa/social/templates.py
 pbesa/social/worker.py
