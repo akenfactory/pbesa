@@ -13,64 +13,9 @@
 # Define resources
 # --------------------------------------------------------
 
-import traceback
 from abc import ABC, abstractmethod
+from pbesa.models import GPTService, ServiceProvider
 from pbesa.social.dialog import DialogState, ActionNode, DeclarativeNode, TerminalNode
-
-# --------------------------------------------------------
-# Define OpenAI Adapter component
-# --------------------------------------------------------
-
-class OpenAIAdapter():
-
-    def __init__(self, model:any, model_conf:dict, work_memory:list) -> None:
-        """ Constructor method
-        :param model: model
-        :param model_conf: model_conf
-        :param work_memory: work_memory
-        """
-        self.model:any = model
-        self.model_conf:dict = model_conf
-        self.__work_memory:list = work_memory
-
-    def generate(self) -> str:
-        """ Generate method
-        :return: str
-        """
-        try:
-            # Genera texto con OpenAI.
-            self.model.api_key = self.model_conf['API_KEY']
-            engine = self.model_conf['OPENAI_ENGINE']
-            response = self.model.ChatCompletion.create(
-                model = engine,
-                messages = self.__work_memory
-            )
-            # Verifica si se obtuvo respuesta.
-            if response['choices'][0]['finish_reason'] == 'completed' or response['choices'][0]['finish_reason'] == 'stop':
-                res = response['choices'][0]['message']['content']
-                try:
-                    if not res or res == 'null' or res == 'N/A' or 'N/A' in res:
-                        #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                        print("OpenAI response not completed")
-                        return None
-                    #self.log.info("OpenAI response completed", extra={'log_data': {'gpt_response': response}})
-                    print("OpenAI response completed")
-                    self.__work_memory.append({"role": "assistant", "content": res})
-                    return res
-                except:
-                    #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                    print("OpenAI response not completed")
-                    return None
-            else:
-                #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                print("OpenAI response not completed")
-                return None
-        except Exception as e:
-            trace_err = traceback.format_exc()
-            err = str(e) + " - " + trace_err
-            #self.log.error(err)
-            print(err)
-            return None
 
 # --------------------------------------------------------
 # Define Model component
@@ -199,7 +144,7 @@ class AugmentedGeneration(ABC):
         """
         self.model = model
         self.model_conf = model_conf
-        self.__model_adapter = OpenAIAdapter(self.model, self.model_conf, self.__work_memory)
+        #self.__model_adapter = OpenAIAdapter(self.model, self.model_conf, self.__work_memory)
     
     def update_world_model(self, fact:str) -> None:
         """ Update world model method
@@ -317,7 +262,7 @@ class Production(ABC):
         """
         self.model = model
         self.model_conf = model_conf
-        self.__model_adapter = OpenAIAdapter(self.model, self.model_conf, self.__work_memory)
+        #self.__model_adapter = OpenAIAdapter(self.model, self.model_conf, self.__work_memory)
 
     def get_rule_set(self) -> list:
         """ Get rule set method
@@ -379,8 +324,10 @@ class Dialog(ABC):
         self.__dfa = dfa if dfa else "Undefined"
         # Set dialog state
         self.__dialog_state = DialogState.START
-        # Define model adapter
-        self.__model_adapter = None
+        # Define the provider
+        self.__service_provider = None
+        # Define AI service
+        self.__ai_service = None
         # Set up model
         self.set_up_model()
         
@@ -408,14 +355,18 @@ class Dialog(ABC):
         """
         return self.__dialog_state
     
-    def load_model(self, model:any, model_conf:dict) -> None:
-        """ Set model method
-        :param model: model
-        :param model_conf: Configuration
-        """
-        self.model = model
-        self.model_conf = model_conf
-        self.__model_adapter = OpenAIAdapter(self.model, self.model_conf, self.__work_memory)
+    def load_model(self, provider, config, ai_service=None) -> None:
+            # Define provider
+            service = None
+            self.__service_provider = ServiceProvider()
+            if "GPT" in provider:
+                service = GPTService()
+                self.__service_provider.register("GPT", service)
+            if "CustomML" in provider:
+                service = ai_service()
+                self.__service_provider.register("CustomML", service)
+            service.setup(config)
+            self.__ai_service = service
     
     def update_world_model(self, fact:str) -> None:
         """ Update world model method
@@ -450,7 +401,7 @@ class Dialog(ABC):
             self.__work_memory.append({"role": "system", "content": text})
             new_owner = node.owner
             new_dialog_state = node.performative
-            return new_owner, new_dialog_state, self.__model_adapter.generate()
+            return new_owner, new_dialog_state, self.__ai_service.generate()
         path_tag = next((tag for tag in ['do', 'yes', 'no'] if tag in node.children), None)
         print("path_tag", path_tag)       
         if path_tag:
@@ -458,7 +409,7 @@ class Dialog(ABC):
             new_dialog_state = node.children[path_tag].performative
             if not isinstance(node, TerminalNode):
                 print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
-                return new_owner, new_dialog_state, self.__model_adapter.generate()
+                return new_owner, new_dialog_state, self.__ai_service.generate()
             print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
             return new_owner, new_dialog_state, None
         else:
