@@ -99,3 +99,119 @@ class APIClient:
             "status": False,
             "message": "An error occurred while making the POST request."
         }
+    
+    def get(self, endpoint) -> dict:
+        """
+        Make a GET request to the specified endpoint.
+        :param endpoint: Endpoint to send the GET request to.
+        :return: Response object if the request is successful, None otherwise.
+        """
+        response = None
+        try:
+            response = requests.get(
+                url=f"{self.base_url}/{endpoint}",
+                headers=self.headers,
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            print(f"GET request to {endpoint} succeeded: {response.status_code}")
+            res = {
+                "status": True,
+                "message": response.json()
+            }
+            return res
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+        if response is not None:
+            return {
+                "status": False,
+                "message": response.text
+            }
+        return {
+            "status": False,
+            "message": "An error occurred while making the GET request."
+        }
+    
+    def put(self, endpoint, payload) -> dict:
+        """
+        Make a PUT request to the specified endpoint with the given data.
+        :param endpoint: Endpoint to send the PUT request to.
+        :param payload: Data to include in the PUT request.
+        :return: Response object if the request is successful, None otherwise.
+        """
+        response = None
+        try:
+            response = requests.put(
+                url=f"{self.base_url}/{endpoint}",
+                headers=self.headers,
+                json=payload,
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            print(f"PUT request to {endpoint} succeeded: {response.status_code}")
+            res = {
+                "status": True,
+                "message": response.json()
+            }
+            return res
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+        if response is not None:
+            return {
+                "status": False,
+                "message": response.text
+            }
+        return {
+            "status": False,
+            "message": "An error occurred while making the PUT request."
+        }
+    
+    def delete(self, endpoint) -> dict:
+        """
+        Make a DELETE request to the specified endpoint.
+        :param endpoint: Endpoint to send the DELETE request to.
+        :return: Response object if the request is successful, None otherwise.
+        """
+        response = None
+        try:
+            response = requests.delete(
+                url=f"{self.base_url}/{endpoint}",
+                headers=self.headers,
+                timeout=self.timeout
+            )
+            response.raise_for_status()
+            print(f"DELETE request to {endpoint} succeeded: {response.status_code}")
+            res = {
+                "status": True,
+                "message": response.json()
+            }
+            return res
+        except requests.exceptions.HTTPError as http_err:
+            print(f"HTTP error occurred: {http_err}")
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Connection error occurred: {conn_err}")
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Timeout error occurred: {timeout_err}")
+        except requests.exceptions.RequestException as req_err:
+            print(f"An error occurred: {req_err}")
+        if response is not None:
+            return {
+                "status": False,
+                "message": response.text
+            }
+        return {
+            "status": False,
+            "message": "An error occurred while making the DELETE request."
+        }
