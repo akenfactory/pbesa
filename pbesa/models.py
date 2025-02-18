@@ -42,10 +42,13 @@ class AIService(ABC):
 
 class GPTService(AIService):
 
-    def setup(self, config: dict) -> None:
+    def __init__(self) -> None:
+        super().__init__()
+
+    def setup(self, config: dict, work_memory) -> None:
         self.model:any = config['model']
         self.model_conf:dict = config
-        self.__work_memory:list = config['work_memory']
+        self.__work_memory:list = work_memory
 
     def generate(self) -> str:
         """ Generate method
