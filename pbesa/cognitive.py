@@ -14,7 +14,7 @@
 # --------------------------------------------------------
 
 from abc import ABC, abstractmethod
-from pbesa.models import GPTService, ServiceProvider
+from pbesa.models import AIFoundry, GPTService, ServiceProvider
 from pbesa.social.dialog import DialogState, ActionNode, DeclarativeNode, TerminalNode
 
 # --------------------------------------------------------
@@ -146,7 +146,10 @@ class AugmentedGeneration(ABC):
         if "GPT" in provider:
             service = GPTService()
             self.__service_provider.register("GPT", service)
-        if "CustomML" in provider:
+        elif "AI_FOUNDRY" in provider:
+            service = AIFoundry()
+            self.__service_provider.register("AIFoundry", service)
+        elif "CustomML" in provider:
             service = ai_service()
             self.__service_provider.register("CustomML", service)
         service.setup(config, self.__work_memory)
@@ -362,17 +365,20 @@ class Dialog(ABC):
         return self.__dialog_state
     
     def load_model(self, provider, config, ai_service=None) -> None:
-            # Define provider
-            service = None
-            self.__service_provider = ServiceProvider()
-            if "GPT" in provider:
-                service = GPTService()
-                self.__service_provider.register("GPT", service)
-            if "CustomML" in provider:
-                service = ai_service()
-                self.__service_provider.register("CustomML", service)
-            service.setup(config, self.__work_memory)
-            self.__ai_service = service
+        # Define provider
+        service = None
+        self.__service_provider = ServiceProvider()
+        if "GPT" in provider:
+            service = GPTService()
+            self.__service_provider.register("GPT", service)
+        elif "AI_FOUNDRY" in provider:
+            service = AIFoundry()
+            self.__service_provider.register("AIFoundry", service)
+        elif "CustomML" in provider:
+            service = ai_service()
+            self.__service_provider.register("CustomML", service)
+        service.setup(config, self.__work_memory)
+        self.__ai_service = service
     
     def update_world_model(self, fact:str) -> None:
         """ Update world model method
