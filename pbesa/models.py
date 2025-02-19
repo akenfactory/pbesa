@@ -42,10 +42,16 @@ class AIService(ABC):
 
 class GPTService(AIService):
 
-    def setup(self, config: dict) -> None:
-        self.model:any = config['model']
-        self.model_conf:dict = config
-        self.__work_memory:list = config['work_memory']
+    def __init__(self) -> None:
+        super().__init__()
+
+    def setup(self, config: dict, work_memory) -> None:
+        try:
+            self.model:any = config['model']
+            self.model_conf:dict = config
+            self.__work_memory:list = work_memory
+        except Exception as e:
+            raise Exception("Could not setup GPTService: check the configuration.")
 
     def generate(self) -> str:
         """ Generate method
@@ -87,17 +93,20 @@ class GPTService(AIService):
 
 class AIFoundry(AIService):
 
-    def setup(self, config: dict) -> None:        
+    def __init__(self) -> None:
+        super().__init__()
+
+    def setup(self, config: dict, work_memory) -> None:        
         self.model_conf:dict = config
-        self.__work_memory:list = config['work_memory']
+        self.__work_memory:list = work_memory
         project = AIProjectClient.from_connection_string(
-            conn_str=config['project_connection_string'], credential=DefaultAzureCredential()
+            conn_str=config['PROJECT_CONNECTION_STRING'], credential=DefaultAzureCredential()
         )
         self.model:any = project.inference.get_chat_completions_client()
 
     def generate(self) -> str:
         response = self.model.complete(
-            model=self.model_conf['model'],
+            model=self.model_conf['AIFOUNDRY_MODEL'],
             messages=self.__work_memory,
         )
         return response.choices[0].message.content

@@ -14,7 +14,7 @@
 # --------------------------------------------------------
 
 from abc import ABC, abstractmethod
-from pbesa.models import GPTService, ServiceProvider
+from pbesa.models import AIFoundry, GPTService, ServiceProvider
 from pbesa.social.dialog import DialogState, ActionNode, DeclarativeNode, TerminalNode
 
 # --------------------------------------------------------
@@ -121,8 +121,10 @@ class AugmentedGeneration(ABC):
         # Define role
         role = self.define_role() 
         self.__role = role.strip() if role else "Undefined"
-        # Define model adapter
-        self.__model_adapter = None
+        # Define the provider
+        self.__service_provider = None
+        # Define AI service
+        self.__ai_service = None
         # Set up model
         self.set_up_model()
 
@@ -137,14 +139,21 @@ class AugmentedGeneration(ABC):
         """
         return self.model
     
-    def load_model(self, model:any, model_conf:dict) -> None:
-        """ Set model method
-        :param model: model
-        :param model_conf: Configuration
-        """
-        self.model = model
-        self.model_conf = model_conf
-        #self.__model_adapter = OpenAIAdapter(self.model, self.model_conf, self.__work_memory)
+    def load_model(self, provider, config, ai_service=None) -> None:
+        # Define provider
+        service = None
+        self.__service_provider = ServiceProvider()
+        if "GPT" in provider:
+            service = GPTService()
+            self.__service_provider.register("GPT", service)
+        elif "AI_FOUNDRY" in provider:
+            service = AIFoundry()
+            self.__service_provider.register("AIFoundry", service)
+        elif "CustomML" in provider:
+            service = ai_service()
+            self.__service_provider.register("CustomML", service)
+        service.setup(config, self.__work_memory)
+        self.__ai_service = service
     
     def update_world_model(self, fact:str) -> None:
         """ Update world model method
@@ -166,7 +175,7 @@ class AugmentedGeneration(ABC):
         content = self.retrieval(query)
         self.__work_memory.append({"role": "system", "content": f"A partir de la siguiente información: {content} responde a la siguiente consulta:"})
         self.__work_memory.append({"role": "user", "content": query})
-        return self.__model_adapter.generate()
+        return self.__ai_service.generate()
 
     @abstractmethod
     def define_role(self) -> str:
@@ -356,17 +365,20 @@ class Dialog(ABC):
         return self.__dialog_state
     
     def load_model(self, provider, config, ai_service=None) -> None:
-            # Define provider
-            service = None
-            self.__service_provider = ServiceProvider()
-            if "GPT" in provider:
-                service = GPTService()
-                self.__service_provider.register("GPT", service)
-            if "CustomML" in provider:
-                service = ai_service()
-                self.__service_provider.register("CustomML", service)
-            service.setup(config)
-            self.__ai_service = service
+        # Define provider
+        service = None
+        self.__service_provider = ServiceProvider()
+        if "GPT" in provider:
+            service = GPTService()
+            self.__service_provider.register("GPT", service)
+        elif "AI_FOUNDRY" in provider:
+            service = AIFoundry()
+            self.__service_provider.register("AIFoundry", service)
+        elif "CustomML" in provider:
+            service = ai_service()
+            self.__service_provider.register("CustomML", service)
+        service.setup(config, self.__work_memory)
+        self.__ai_service = service
     
     def update_world_model(self, fact:str) -> None:
         """ Update world model method
