@@ -14,8 +14,30 @@
 # --------------------------------------------------------
 
 from abc import ABC, abstractmethod
-from pbesa.models import AIFoundry, GPTService, ServiceProvider
+from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
 from pbesa.social.dialog import DialogState, ActionNode, DeclarativeNode, TerminalNode
+
+# --------------------------------------------------------
+# Define common functions
+# --------------------------------------------------------
+
+def define_service_provider(provider, ai_service=None) -> None:
+        # Define provider
+        service = None
+        service_provider = ServiceProvider()
+        if "GPT" in provider:
+            service = GPTService()
+            service_provider.register("GPT", service)
+        elif "AI_FOUNDRY" in provider:
+            service = AIFoundry()
+            service_provider.register("AI_FOUNDRY", service)
+        elif "CUSTOM_ML" in provider:
+            service = ai_service()
+            service_provider.register("CUSTOM_ML", service)
+        elif "AZURE_INFERENCE" in provider:
+            service = AzureInference()
+            service_provider.register("AZURE_INFERENCE", service)
+        return service_provider, service
 
 # --------------------------------------------------------
 # Define Model component
@@ -140,18 +162,7 @@ class AugmentedGeneration(ABC):
         return self.model
     
     def load_model(self, provider, config, ai_service=None) -> None:
-        # Define provider
-        service = None
-        self.__service_provider = ServiceProvider()
-        if "GPT" in provider:
-            service = GPTService()
-            self.__service_provider.register("GPT", service)
-        elif "AI_FOUNDRY" in provider:
-            service = AIFoundry()
-            self.__service_provider.register("AIFoundry", service)
-        elif "CustomML" in provider:
-            service = ai_service()
-            self.__service_provider.register("CustomML", service)
+        self.__service_provider, service = define_service_provider(provider, ai_service)
         service.setup(config, self.__work_memory)
         self.__ai_service = service
     
@@ -365,18 +376,7 @@ class Dialog(ABC):
         return self.__dialog_state
     
     def load_model(self, provider, config, ai_service=None) -> None:
-        # Define provider
-        service = None
-        self.__service_provider = ServiceProvider()
-        if "GPT" in provider:
-            service = GPTService()
-            self.__service_provider.register("GPT", service)
-        elif "AI_FOUNDRY" in provider:
-            service = AIFoundry()
-            self.__service_provider.register("AIFoundry", service)
-        elif "CustomML" in provider:
-            service = ai_service()
-            self.__service_provider.register("CustomML", service)
+        self.__service_provider, service = define_service_provider(provider, ai_service)
         service.setup(config, self.__work_memory)
         self.__ai_service = service
     

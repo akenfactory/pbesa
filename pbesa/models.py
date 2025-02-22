@@ -17,6 +17,8 @@ import traceback
 from abc import ABC, abstractmethod
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
+from azure.ai.inference import ChatCompletionsClient
+from azure.core.credentials import AzureKeyCredential
 
 # --------------------------------------------------------
 # Define classes
@@ -111,6 +113,27 @@ class AIFoundry(AIService):
         )
         return response.choices[0].message.content
 
+class AzureInference(AIService):
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def setup(self, config: dict, work_memory) -> None:        
+        self.model_conf:dict = config
+        self.__work_memory:list = work_memory
+        self.model:any = ChatCompletionsClient(
+            endpoint=config['AZURE_INFERENCE_SDK_ENDPOINT'], 
+            credential=AzureKeyCredential(config['AZURE_INFERENCE_SDK_KEY'])
+        )
+
+    def generate(self) -> str:
+        response = self.model.complete(
+            messages=self.__work_memory,
+            model =self.model_conf['DEPLOYMENT_NAME'],
+            max_tokens=self.model_conf['MAX_TOKENS']
+        )
+        return response.choices[0].message.content
+    
 class ServiceProvider:
     _services = {}
 
