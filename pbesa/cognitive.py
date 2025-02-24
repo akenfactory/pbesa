@@ -32,6 +32,8 @@ class InteraccionDTO(BaseModel):
     interacciones: List["InteraccionDTO"] = []
 
 def interaccion_serializer(interaccion):
+    if isinstance(interaccion, list):
+        return [interaccion_serializer(i) for i in interaccion]
     return {
         "tipo": interaccion["tipo"],
         "texto": interaccion["texto"],
