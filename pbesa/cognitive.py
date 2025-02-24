@@ -13,9 +13,79 @@
 # Define resources
 # --------------------------------------------------------
 
+from pydantic import BaseModel
+from typing import List, Optional
 from abc import ABC, abstractmethod
 from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
 from pbesa.social.dialog import DialogState, ActionNode, DeclarativeNode, TerminalNode
+
+# --------------------------------------------------------
+# Define DTOs
+# --------------------------------------------------------
+
+class InteraccionDTO(BaseModel):
+    tipo: str
+    texto: str
+    actor: str
+    equipo: Optional[str] = None
+    herramienta: Optional[str] = None
+    interacciones: List["InteraccionDTO"] = []
+
+def interaccion_serializer(interaccion):
+    return {
+        "tipo": interaccion["tipo"],
+        "texto": interaccion["texto"],
+        "actor": interaccion["actor"],
+        "equipo": interaccion["equipo"] if "equipo" in interaccion else None,
+        "herramienta": interaccion["herramienta"] if "herramienta" in interaccion else None,
+        "interacciones": [interaccion_serializer(i) for i in interaccion["interacciones"]] if "interacciones" in interaccion else []
+    }
+
+class Role():
+    id: str
+    name: str
+    description: str
+    state: str
+    knowledge_base: str
+    objetive: str
+    arquetype: str
+    example: str
+    interactions: List[InteraccionDTO]
+
+    def __init__(
+        self, id:str, 
+        name:str, 
+        description:str, 
+        state:str, 
+        knowledge_base:str, 
+        objetive:str,
+        arquetype:str,
+        example:str,
+        interactions:List[InteraccionDTO] = []
+        ) -> None:
+        self.id = id
+        self.name = name
+        self.description = description
+        self.state = state
+        self.knowledge_base = knowledge_base
+        self.objetive = objetive
+        self.arquetype = arquetype
+        self.example = example
+        self.interactions = interactions
+
+class AgentMetadata():
+    id: str
+    name: str
+    description: str
+    state: str
+    role: Role
+
+    def __init__(self, id:str, name:str, description:str, state:str, role:Role) -> None:
+        self.id = id
+        self.name = name
+        self.description = description
+        self.state = state
+        self.role = role
 
 # --------------------------------------------------------
 # Define common functions
@@ -337,8 +407,9 @@ class Dialog(ABC):
         self.model_conf:dict = None
         self.__work_memory:list = []
         # Define role
-        role = self.define_role() 
-        self.__role = role.strip() if role else "Undefined"
+        self.__agent_metadata = "Undefined"
+        # Define role
+        self.__role: Role = None
         # Define DFA
         dfa = self.define_dfa()
         self.__dfa = dfa if dfa else "Undefined"
@@ -348,14 +419,11 @@ class Dialog(ABC):
         self.__service_provider = None
         # Define AI service
         self.__ai_service = None
-        # Set up model
-        self.set_up_model()
         
-
-    def set_up_model(self):
+    def setup_world(self):
         """ Set up model method """
         # Define role
-        self.__work_memory.append({"role": "system", "content": self.__role})
+        self.__work_memory.append({"role": "system", "content": self.__role.objetive})
         
     def get_model(self) -> any:
         """ Get model method 
@@ -375,6 +443,14 @@ class Dialog(ABC):
         """
         return self.__dialog_state
     
+    def load_metadata(self, agent_metadata:AgentMetadata) -> None:
+        """ Load metadata method
+        :param agent_metadata: agent_metadata
+        """
+        self.__agent_metadata = agent_metadata
+        self.__role = agent_metadata.role
+        self.setup_world()
+
     def load_model(self, provider, config, ai_service=None) -> None:
         self.__service_provider, service = define_service_provider(provider, ai_service)
         service.setup(config, self.__work_memory)
@@ -426,11 +502,6 @@ class Dialog(ABC):
             return new_owner, new_dialog_state, None
         else:
             raise Exception("No path found")
-
-    @abstractmethod
-    def define_role(self) -> str:
-        """ Set role set method """
-        pass
 
     @abstractmethod
     def define_dfa(self) -> dict:
