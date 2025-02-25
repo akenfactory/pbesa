@@ -7,7 +7,7 @@ Requisitos:
 
 Responde únicamente con el número entero que corresponda a la opción elegida.
 No incluyas explicaciones, razonamientos ni texto adicional.
-Si no logras identificar una relación clara, selecciona la opción que te parezca más cercana.
+Si no logras identificar una relación clara, responde con el número 0.
 Ejemplo:
 
 Texto: "El cielo es azul"

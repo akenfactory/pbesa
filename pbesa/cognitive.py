@@ -427,9 +427,9 @@ class Dialog(ABC):
     def setup_world(self):
         """ Set up model method """
         # Define role
-        self.__work_memory.append({"role": "system", "content": self.__role.objective})
-        self.__work_memory.append({"role": "system", "content": self.__role.arquetype})
-        self.__work_memory.append({"role": "system", "content": self.__role.example})
+        self.__work_memory.append({"role": "user", "content": self.__role.objective})
+        self.__work_memory.append({"role": "user", "content": self.__role.arquetype})
+        self.__work_memory.append({"role": "user", "content": self.__role.example})
         
     def get_model(self) -> any:
         """ Get model method 
@@ -502,43 +502,66 @@ class Dialog(ABC):
         # Set up model
         self.set_up_model()
 
+    def team_inquiry(self, team, data):
+        canal = self.state['canal']
+        dto = {
+            "data": {
+                'text': data,
+            },
+        }
+        response = canal.post(team, dto)
+        if response['status']:
+            return response['message']['response']
+        return "Sin respuesta"
+
     def transition(self, dialog_state, query) -> str:
         text = ""
         node = self.__dfa[dialog_state]
-        if isinstance(node, list):
-            options = ""
-            cont = 1
-            for item in node:
-                options += f"{cont}) {item.text}\n"
-                cont += 1
-            prompt = CLASSIFICATION_PROMPT % (query, options)
-            print("Prompt:", prompt)
-            self.__meta_work_memory.append({"role": "user", "content": prompt})
-            text = self.__ai_service.generate(self.__meta_work_memory)
-            self.__meta_work_memory = []
-            print("Pensamiento:", text)
-            for option in range(1, cont):
-                if str(option) in text:
-                    node = node[option-1]
-                    break
-            self.__work_memory.append({"role": "user", "content": query})
-            self.__work_memory.append({"role": "system", "content": node.text})    
-            text = self.do_transition(node.children[0], query)
-        else:
-            text = self.do_transition(node, query)
+        if not isinstance(node, list):
+            node = node.children
+
+        options = ""
+        cont = 1
+        for item in node:
+            options += f"{cont}) {item.text}\n"
+            cont += 1
+        prompt = CLASSIFICATION_PROMPT % (query, options)
+        print("Prompt:", prompt)
+        self.__meta_work_memory.append({"role": "user", "content": prompt})
+        text = self.__ai_service.generate(self.__meta_work_memory)
+        self.__meta_work_memory = []
+        print("Pensamiento:", text)
+        select_node = None
+        for option in range(1, cont):
+            if str(option) in text:
+                select_node = node[option-1]
+                break
+        if not select_node:
+            print("=> No se seleccionó ninguna opción")
+            select_node = node[0]
+            print(select_node.text)
+        self.__work_memory.append({"role": "user", "content": query})
+        self.__work_memory.append({"role": "system", "content": select_node.text})    
+        text = self.do_transition(select_node.children[0], query)
         return text
 
     def do_transition(self, node, query) -> str:
         """ Generate method
         :return: str
-        """
-        text = ""
-        node = None
-        path_tag = None            
+        """          
         if isinstance(node, DeclarativeNode):
-            text = node.text
-            self.__work_memory.append({"role": "system", "content": text})
+            print("-> node:", node.text)
+            self.__work_memory.append({"role": "system", "content": node.text})
         elif isinstance(node, ActionNode):
+            print("-> node:", node.action)
+            self.__work_memory.append({"role": "system", "content": node.text})
+            text = self.team_inquiry(node.team, query)
+
+            # @TODO: Implementar la acción
+            # Debe inetentar hacer un calculo interno similar a un internal_transition
+            # Quedamos en 123302447783488, consulta a expertos
+
+
             node, text = node.action(node, query)
             print("-> node:", node.performative)
             print("-> text:", text)
@@ -548,14 +571,15 @@ class Dialog(ABC):
             new_owner = node.owner
             new_dialog_state = node.performative
             return new_owner, new_dialog_state, self.__ai_service.generate(self.__work_memory)
-        #path_tag = next((tag for tag in ['do', 'yes', 'no'] if tag in node.children), None)
-        #print("path_tag", path_tag)       
-        #if path_tag:
+
+        res = self.__ai_service.generate(self.__work_memory)
+        self.__work_memory.append({"role": "system", "content": res})
+
         new_owner = "web"
-        new_dialog_state = node.children.performative
+        new_dialog_state = node.performative
         if not node.is_terminal:
             print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
-            return new_owner, new_dialog_state, self.__ai_service.generate(self.__work_memory)
+            return new_owner, new_dialog_state, res
         print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
         return new_owner, new_dialog_state, None
         #else:
