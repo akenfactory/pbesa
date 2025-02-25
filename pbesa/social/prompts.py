@@ -28,34 +28,12 @@ Opciones:%s
 Respuesta:
 """
 
+DERIVE_PROMPT = """
+A partir de la siguiente información: "%s".
 
-CLASSIFICATION_PROMPT_2 = """
-Eres un agente experto en identificar la relación entre textos.
-Tu tarea es de determinar a que opción corresponde o se relaciona más el texto dado.
-Se te proporcionará un unas opciones y deberás seleccionar la que más se relacione con el texto.
-
-Te proporciono un ejemplo:
-
-Texto: "El cielo es azul"
-
-Opciones:
-1) El sol es amarillo
-2) La tierra es redonda
-3) Las nubes son blancas
-4) El agua es transparente
-
-Respuesta: 3
-
-Te proporcionaré un texto y deberás seleccionar la opción que más se relacione con el texto.
-
-Recuerda que debes seleccionar la opción que más se relacione con el texto.
-
-Unicamente se aceptan números enteros como respuesta. No respondas con texto o razonamientos.
-
-Si no puedes identificar la relación, puedes seleccionar la opción que consideres más cercana.
+Ahora, evalúa el siguiente caso:
 
 Texto: "%s"
-Opciones:
-%s
+
 Respuesta:
 """

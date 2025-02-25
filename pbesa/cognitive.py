@@ -18,7 +18,7 @@ from typing import List, Optional
 from abc import ABC, abstractmethod
 from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
 from pbesa.social.dialog import DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, ActionNode, DeclarativeNode#, TerminalNode
-from pbesa.social.prompts import CLASSIFICATION_PROMPT
+from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT
 # --------------------------------------------------------
 # Define DTOs
 # --------------------------------------------------------
@@ -213,19 +213,26 @@ class AugmentedGeneration(ABC):
         self.model_conf:dict = None
         self.__work_memory:list = []
         # Define role
-        role = self.define_role() 
-        self.__role = role.strip() if role else "Undefined"
+        self.__role = None
         # Define the provider
         self.__service_provider = None
         # Define AI service
         self.__ai_service = None
-        # Set up model
-        self.set_up_model()
-
-    def set_up_model(self):
+        
+    def setup_world(self):
         """ Set up model method """
         # Define role
-        self.__work_memory.append({"role": "system", "content": self.__role})
+        self.__work_memory.append({"role": "user", "content": self.__role.objective})
+        self.__work_memory.append({"role": "user", "content": self.__role.arquetype})
+        self.__work_memory.append({"role": "user", "content": self.__role.example})
+    
+    def load_metadata(self, agent_metadata:AgentMetadata) -> None:
+        """ Load metadata method
+        :param agent_metadata: agent_metadata
+        """
+        self.__agent_metadata = agent_metadata
+        self.__role = agent_metadata.role
+        self.setup_world()
         
     def get_model(self) -> any:
         """ Get model method 
@@ -235,7 +242,7 @@ class AugmentedGeneration(ABC):
     
     def load_model(self, provider, config, ai_service=None) -> None:
         self.__service_provider, service = define_service_provider(provider, ai_service)
-        service.setup(config, self.__work_memory)
+        service.setup(config)
         self.__ai_service = service
     
     def update_world_model(self, fact:str) -> None:
@@ -256,14 +263,12 @@ class AugmentedGeneration(ABC):
         :return: str
         """
         content = self.retrieval(query)
-        self.__work_memory.append({"role": "system", "content": f"A partir de la siguiente información: {content} responde a la siguiente consulta:"})
-        self.__work_memory.append({"role": "user", "content": query})
-        return self.__ai_service.generate()
-
-    @abstractmethod
-    def define_role(self) -> str:
-        """ Set role set method """
-        pass
+        prompt = DERIVE_PROMPT % (content, query)
+        instantane_memory = self.__work_memory.copy()
+        instantane_memory.append({"role": "user", "content": prompt})
+        text = self.__ai_service.generate(instantane_memory)
+        print("Pensamiento:", text)
+        return text
 
     @abstractmethod
     def retrieval(self, query) -> str:
@@ -423,6 +428,10 @@ class Dialog(ABC):
         self.__service_provider = None
         # Define AI service
         self.__ai_service = None
+        # Define deep
+        self.__deep_count = 0
+        self.__deep_limit = 3
+
         
     def setup_world(self):
         """ Set up model method """
@@ -509,17 +518,16 @@ class Dialog(ABC):
                 'text': data,
             },
         }
-        response = canal.post(team, dto)
+        response = canal.post(team.lower(), dto)
         if response['status']:
             return response['message']['response']
         return "Sin respuesta"
 
-    def transition(self, dialog_state, query) -> str:
+    def transition(self, dialog_state, query, team_source=False) -> str:
         text = ""
         node = self.__dfa[dialog_state]
         if not isinstance(node, list):
             node = node.children
-
         options = ""
         cont = 1
         for item in node:
@@ -531,6 +539,7 @@ class Dialog(ABC):
         text = self.__ai_service.generate(self.__meta_work_memory)
         self.__meta_work_memory = []
         print("Pensamiento:", text)
+
         select_node = None
         for option in range(1, cont):
             if str(option) in text:
@@ -540,10 +549,15 @@ class Dialog(ABC):
             print("=> No se seleccionó ninguna opción")
             select_node = node[0]
             print(select_node.text)
-        self.__work_memory.append({"role": "user", "content": query})
-        self.__work_memory.append({"role": "system", "content": select_node.text})    
-        text = self.do_transition(select_node.children[0], query)
-        return text
+
+        if team_source:
+            self.__work_memory.append({"role": "system", "content": select_node.text})
+        else:
+            self.__work_memory.append({"role": "user", "content": query})
+            self.__work_memory.append({"role": "system", "content": select_node.text})  
+
+        new_owner, new_dialog_state, text = self.do_transition(select_node.children[0], query)
+        return new_owner, new_dialog_state, text
 
     def do_transition(self, node, query) -> str:
         """ Generate method
@@ -553,43 +567,25 @@ class Dialog(ABC):
             print("-> node:", node.text)
             self.__work_memory.append({"role": "system", "content": node.text})
         elif isinstance(node, ActionNode):
-            print("-> node:", node.action)
+            print("-> node action:", node.action)
             self.__work_memory.append({"role": "system", "content": node.text})
             text = self.team_inquiry(node.team, query)
-
-            # @TODO: Implementar la acción
-            # Debe inetentar hacer un calculo interno similar a un internal_transition
-            # Quedamos en 123302447783488, consulta a expertos
-
-
-            node, text = node.action(node, query)
-            print("-> node:", node.performative)
-            print("-> text:", text)
-            self.__work_memory.append({"role": "user", "content": query})
-            self.__work_memory.append({"role": "system", "content": text})
-            self.__work_memory.append({"role": "system", "content": text})
-            new_owner = node.owner
-            new_dialog_state = node.performative
-            return new_owner, new_dialog_state, self.__ai_service.generate(self.__work_memory)
+            self.__deep_count += 1
+            if self.__deep_count < self.__deep_limit:
+                return self.transition(node.performative, text)
+            else:
+                self.__deep_count = 0
+                return "Web", "start", "Lo lamento me he perdido, ¿podrías repetir la pregunta?"
+        else:
+            print("-> Otro tipo de nodo:", node.text)
 
         res = self.__ai_service.generate(self.__work_memory)
         self.__work_memory.append({"role": "system", "content": res})
 
-        new_owner = "web"
+        new_owner = "Web"
         new_dialog_state = node.performative
         if not node.is_terminal:
             print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
             return new_owner, new_dialog_state, res
         print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
         return new_owner, new_dialog_state, None
-        #else:
-        #    raise Exception("No path found")
-        
-    '''
-
-    @abstractmethod
-    def define_dfa(self) -> dict:
-        """ Set role set method """
-        pass
-    
-    '''
