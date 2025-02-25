@@ -17,8 +17,8 @@ from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
 from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
-from pbesa.social.dialog import DialogState, ActionNode, DeclarativeNode, TerminalNode
-
+from pbesa.social.dialog import DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, ActionNode, DeclarativeNode#, TerminalNode
+from pbesa.social.prompts import CLASSIFICATION_PROMPT
 # --------------------------------------------------------
 # Define DTOs
 # --------------------------------------------------------
@@ -49,7 +49,7 @@ class Role():
     description: str
     state: str
     knowledge_base: str
-    objetive: str
+    objective: str
     arquetype: str
     example: str
     interactions: List[InteraccionDTO]
@@ -60,7 +60,7 @@ class Role():
         description:str, 
         state:str, 
         knowledge_base:str, 
-        objetive:str,
+        objective:str,
         arquetype:str,
         example:str,
         interactions:List[InteraccionDTO] = []
@@ -70,7 +70,7 @@ class Role():
         self.description = description
         self.state = state
         self.knowledge_base = knowledge_base
-        self.objetive = objetive
+        self.objective = objective
         self.arquetype = arquetype
         self.example = example
         self.interactions = interactions
@@ -408,13 +408,15 @@ class Dialog(ABC):
         self.model:any = None
         self.model_conf:dict = None
         self.__work_memory:list = []
+        self.__meta_work_memory:list = []
         # Define role
         self.__agent_metadata = "Undefined"
         # Define role
         self.__role: Role = None
         # Define DFA
-        dfa = self.define_dfa()
-        self.__dfa = dfa if dfa else "Undefined"
+        self.__dfa = None
+        #dfa = self.define_dfa()
+        #self.__dfa = dfa if dfa else "Undefined"
         # Set dialog state
         self.__dialog_state = DialogState.START
         # Define the provider
@@ -425,7 +427,9 @@ class Dialog(ABC):
     def setup_world(self):
         """ Set up model method """
         # Define role
-        self.__work_memory.append({"role": "system", "content": self.__role.objetive})
+        self.__work_memory.append({"role": "system", "content": self.__role.objective})
+        self.__work_memory.append({"role": "system", "content": self.__role.arquetype})
+        self.__work_memory.append({"role": "system", "content": self.__role.example})
         
     def get_model(self) -> any:
         """ Get model method 
@@ -452,10 +456,37 @@ class Dialog(ABC):
         self.__agent_metadata = agent_metadata
         self.__role = agent_metadata.role
         self.setup_world()
+        interations = agent_metadata.role.interactions
+        grafo = recorrer_interacciones(interations)
+        print("")
+        # Si el grafo es una lista de nodos, lo imprimimos cada uno
+        if isinstance(grafo, list):
+            for nodo in grafo:
+                imprimir_grafo(nodo)
+        else:
+            imprimir_grafo(grafo)
+        print("")
+        # Ejemplo de uso:
+        self.__dfa = extraer_diccionario_nodos(grafo)
+        # Mostrar el diccionario
+        for clave, valor in self.__dfa.items():
+            print(f"{clave}: {valor.text}")
+        print("")
+        iniciadores = []
+        for item in interations:
+            for clave, valor in self.__dfa.items():
+                if valor.text == item['texto']:
+                    iniciadores.append(valor)
+        print("Iniciadores:")
+        for iniciador in iniciadores:
+            print(iniciador.text)
+        print("")
+        # Set dialog state
+        self.__dfa['start'] = iniciadores
 
     def load_model(self, provider, config, ai_service=None) -> None:
         self.__service_provider, service = define_service_provider(provider, ai_service)
-        service.setup(config, self.__work_memory)
+        service.setup(config)
         self.__ai_service = service
     
     def update_world_model(self, fact:str) -> None:
@@ -472,16 +503,41 @@ class Dialog(ABC):
         self.set_up_model()
 
     def transition(self, dialog_state, query) -> str:
+        text = ""
+        node = self.__dfa[dialog_state]
+        if isinstance(node, list):
+            options = ""
+            cont = 1
+            for item in node:
+                options += f"{cont}) {item.text}\n"
+                cont += 1
+            prompt = CLASSIFICATION_PROMPT % (query, options)
+            print("Prompt:", prompt)
+            self.__meta_work_memory.append({"role": "user", "content": prompt})
+            text = self.__ai_service.generate(self.__meta_work_memory)
+            self.__meta_work_memory = []
+            print("Pensamiento:", text)
+            for option in range(1, cont):
+                if str(option) in text:
+                    node = node[option-1]
+                    break
+            self.__work_memory.append({"role": "user", "content": query})
+            self.__work_memory.append({"role": "system", "content": node.text})    
+            text = self.do_transition(node.children[0], query)
+        else:
+            text = self.do_transition(node, query)
+        return text
+
+    def do_transition(self, node, query) -> str:
         """ Generate method
         :return: str
         """
         text = ""
-        path_tag = None
-        node = self.__dfa[dialog_state]
+        node = None
+        path_tag = None            
         if isinstance(node, DeclarativeNode):
             text = node.text
             self.__work_memory.append({"role": "system", "content": text})
-            self.__work_memory.append({"role": "user", "content": query})
         elif isinstance(node, ActionNode):
             node, text = node.action(node, query)
             print("-> node:", node.performative)
@@ -491,21 +547,25 @@ class Dialog(ABC):
             self.__work_memory.append({"role": "system", "content": text})
             new_owner = node.owner
             new_dialog_state = node.performative
-            return new_owner, new_dialog_state, self.__ai_service.generate()
-        path_tag = next((tag for tag in ['do', 'yes', 'no'] if tag in node.children), None)
-        print("path_tag", path_tag)       
-        if path_tag:
-            new_owner = node.children[path_tag].owner
-            new_dialog_state = node.children[path_tag].performative
-            if not isinstance(node, TerminalNode):
-                print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
-                return new_owner, new_dialog_state, self.__ai_service.generate()
+            return new_owner, new_dialog_state, self.__ai_service.generate(self.__work_memory)
+        #path_tag = next((tag for tag in ['do', 'yes', 'no'] if tag in node.children), None)
+        #print("path_tag", path_tag)       
+        #if path_tag:
+        new_owner = "web"
+        new_dialog_state = node.children.performative
+        if not node.is_terminal:
             print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
-            return new_owner, new_dialog_state, None
-        else:
-            raise Exception("No path found")
+            return new_owner, new_dialog_state, self.__ai_service.generate(self.__work_memory)
+        print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
+        return new_owner, new_dialog_state, None
+        #else:
+        #    raise Exception("No path found")
+        
+    '''
 
     @abstractmethod
     def define_dfa(self) -> dict:
         """ Set role set method """
         pass
+    
+    '''

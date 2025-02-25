@@ -30,15 +30,14 @@ class AIService(ABC):
     def __init__(self) -> None:
         self.model:any = None
         self.model_conf:dict = None
-        self.__work_memory:list = []
-
+        
     @abstractmethod
     def setup(self, config: dict) -> None:
         """Method to setup the AI service."""
         raise NotImplementedError("Method 'setup' must be implemented.")
 
     @abstractmethod
-    def generate(self) -> str:
+    def generate(self, work_memory) -> str:
         """Method to generate a response based on user input."""
         raise NotImplementedError("Method 'setup' must be implemented.")
 
@@ -118,17 +117,16 @@ class AzureInference(AIService):
     def __init__(self) -> None:
         super().__init__()
 
-    def setup(self, config: dict, work_memory) -> None:        
+    def setup(self, config: dict) -> None:        
         self.model_conf:dict = config
-        self.__work_memory:list = work_memory
         self.model:any = ChatCompletionsClient(
             endpoint=config['AZURE_INFERENCE_SDK_ENDPOINT'], 
             credential=AzureKeyCredential(config['AZURE_INFERENCE_SDK_KEY'])
         )
 
-    def generate(self) -> str:
+    def generate(self, work_memory) -> str:
         response = self.model.complete(
-            messages=self.__work_memory,
+            messages= work_memory,
             model =self.model_conf['DEPLOYMENT_NAME'],
             max_tokens=self.model_conf['MAX_TOKENS']
         )

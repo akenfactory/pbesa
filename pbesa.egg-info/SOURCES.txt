@@ -96,5 +96,6 @@ pbesa/social/delegator.py
 pbesa/social/delegator_team.py
 pbesa/social/dialog.py
 pbesa/social/dispatcher_team.py
+pbesa/social/prompts.py
 pbesa/social/templates.py
 pbesa/social/worker.py

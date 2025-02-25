@@ -14,6 +14,7 @@
 # --------------------------------------------------------
 
 import datetime
+import traceback
 from .templates import AFIRMATIVE_RESPONSE, GET_DATE
 
 #------------------------------------------
@@ -32,77 +33,25 @@ class DialogState:
 # Define Node class
 #------------------------------------------
 
-class ActionNode:
-    """ Node class """
-
-    def __init__(self, owner, performative, action, is_terminal=False):
-        self.owner = owner
-        self.children = {}
-        self.action = action
-        self.is_terminal = is_terminal
-        self.performative = performative
-
-    def add_child(self, tag, node):
-        self.children[tag] = node
-    
-class DeclarativeNode:
-    """ Node class """
-
-    def __init__(self, owner, performative, text, is_terminal=False):
-        self.text = text
-        self.owner = owner
-        self.children = {}
-        self.is_terminal = is_terminal
-        self.performative = performative
-
-    def add_child(self, tag, node):
-        self.children[tag] = node
-    
-class TerminalNode:
-    """ Node class """
-
-    def __init__(self, owner, performative):
-        self.owner = owner
-        self.performative = performative
-
 class Node:
-    """ Node class """
-
-    def __init__(self, owner, performative, text=None, action=None, is_terminal=False, is_expert=False, value={}):
+    def __init__(self, performative, text=None, is_terminal=False):
+        self.performative = performative  # Se asigna el ID del objeto (en str)
         self.text = text
-        self.owner = owner
-        self.value = value
-        self.children = {}
-        self.action = action
-        self.is_expert = is_expert
         self.is_terminal = is_terminal
-        self.performative = performative
+        self.children = []
 
-    def add_child(self, tag, node):
-        self.children[tag] = node
+class ActionNode(Node):
+    def __init__(self, performative, action=None, is_terminal=False):
+        super().__init__(performative=performative, is_terminal=is_terminal)
+        self.action = action
 
-    def set_value(self, key, value):
-        self.value[key] = value
+class DeclarativeNode(Node):
+    def __init__(self, performative, text, is_terminal=False):
+        super().__init__(performative, text, is_terminal)
 
-    def run(self, dto):
-        if self.text and not self.action:
-            return self
-        elif self.action:
-            window = self.action(self, dto)
-            if window.is_terminal:
-                return window.action(window, dto) if window.action else window
-            elif self.is_expert:
-                return self
-            return window.run(dto)
-        raise Exception("Se ha estructurado mal el dialogo.")
-    
-    def generate_response(self):
-        response = get_response_message()
-        response['text'] = self.text
-        if self.value:
-            for key, value in self.value.items():
-                response[key] = value
-        return response
+class ResponseNode(Node):
+    def __init__(self, performative, text, is_terminal=False):
+        super().__init__(performative=performative, text=text, is_terminal=is_terminal)
 
 #------------------------------------------
 # Define functions
@@ -151,3 +100,102 @@ def check_date(self, dto):
         except:
             pass
     return self.children['no']
+
+def recorrer_interacciones(obj):
+    try:
+        # Si el objeto es una lista, procesamos cada elemento y devolvemos la lista de nodos resultantes
+        if isinstance(obj, list):
+            nodos = []
+            for item in obj:
+                resultado = recorrer_interacciones(item)
+                if resultado is not None:
+                    # Si el resultado es una lista, lo extendemos; si es un solo nodo, lo agregamos
+                    if isinstance(resultado, list):
+                        nodos.extend(resultado)
+                    else:
+                        nodos.append(resultado)
+            return nodos
+
+        # Si es un diccionario
+        elif isinstance(obj, dict):
+            # Si tiene la clave "tipo", creamos un nodo (según su valor) y procesamos sus hijos
+            if "tipo" in obj:
+                # Se usa el id del diccionario convertido a cadena para 'performative'
+                current_id = str(id(obj))
+                texto = obj.get("texto")
+                
+                # Procesamos los nodos hijos buscando en las claves "interacciones" y "Interacciones"
+                children = []
+                for key in ["interacciones", "Interacciones"]:
+                    if key in obj and isinstance(obj[key], (list, dict)):
+                        hijos = recorrer_interacciones(obj[key])
+                        if hijos is not None:
+                            if isinstance(hijos, list):
+                                children.extend(hijos)
+                            else:
+                                children.append(hijos)
+                
+                # Es terminal si no tiene hijos
+                is_terminal = (len(children) == 0)
+                
+                # Normalizamos el valor de "tipo" (se pasa a minúsculas y se reemplaza "í" por "i")
+                tipo = obj["tipo"].lower().replace("í", "i").strip()
+                if tipo == "dialogo":
+                    nuevo_nodo = DeclarativeNode(performative=current_id, text=texto, is_terminal=is_terminal)
+                elif tipo == "llamada a equipo":
+                    nuevo_nodo = ActionNode(performative=current_id, action=texto, is_terminal=is_terminal)
+                elif tipo == "respuesta de equipo":
+                    nuevo_nodo = ResponseNode(performative=current_id, text=texto, is_terminal=is_terminal)
+                else:
+                    nuevo_nodo = Node(performative=current_id, text=texto, is_terminal=is_terminal)
+                
+                # Se asignan los nodos hijos construidos
+                nuevo_nodo.children = children
+                return nuevo_nodo
+            
+            else:
+                # Si el diccionario no tiene "tipo", es un contenedor (por ejemplo, el nodo raíz que contiene "Interacciones")
+                nodos = []
+                for key in ["interacciones", "Interacciones"]:
+                    if key in obj:
+                        resultado = recorrer_interacciones(obj[key])
+                        if resultado is not None:
+                            if isinstance(resultado, list):
+                                nodos.extend(resultado)
+                            else:
+                                nodos.append(resultado)
+                return nodos if nodos else None
+        else:
+            return None
+    except Exception as e:
+        print(f"Error al recorrer interacciones: {e}")
+        traceback.print_exc()
+        return None
+    
+def extraer_diccionario_nodos(grafo):
+    diccionario_nodos = {}
+    
+    def recorrer(nodo):
+        # Obtener el contenido: se utiliza 'text' si existe, de lo contrario se toma 'action'
+        diccionario_nodos[nodo.performative] = nodo
+        # Recorrer los hijos del nodo
+        for hijo in nodo.children:
+            recorrer(hijo)
+    
+    # El grafo puede ser una lista de nodos o un único nodo
+    if isinstance(grafo, list):
+        for nodo in grafo:
+            recorrer(nodo)
+    else:
+        recorrer(grafo)
+        
+    return diccionario_nodos
+
+# Ejemplo: función para imprimir el grafo (para visualizar la estructura)
+def imprimir_grafo(nodo, nivel=0):
+    indent = "  " * nivel
+    # Se muestra la clase del nodo y algunos atributos
+    clase = nodo.__class__.__name__
+    print(f"{indent}{clase} (performative: {nodo.performative}, text/action: {nodo.text if hasattr(nodo, 'text') and nodo.text is not None else getattr(nodo, 'action', None)}, terminal: {nodo.is_terminal})")
+    for child in nodo.children:
+        imprimir_grafo(child, nivel + 1)
