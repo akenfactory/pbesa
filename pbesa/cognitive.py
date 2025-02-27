@@ -13,6 +13,7 @@
 # Define resources
 # --------------------------------------------------------
 
+import traceback
 from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
@@ -52,6 +53,7 @@ class Role():
     objective: str
     arquetype: str
     example: str
+    tool: str
     interactions: List[InteraccionDTO]
 
     def __init__(
@@ -62,6 +64,7 @@ class Role():
         knowledge_base:str, 
         objective:str,
         arquetype:str,
+        tool:str,
         example:str,
         interactions:List[InteraccionDTO] = []
         ) -> None:
@@ -73,6 +76,7 @@ class Role():
         self.objective = objective
         self.arquetype = arquetype
         self.example = example
+        self.tool = tool
         self.interactions = interactions
 
 class AgentMetadata():
@@ -218,6 +222,8 @@ class AugmentedGeneration(ABC):
         self.__service_provider = None
         # Define AI service
         self.__ai_service = None
+        # Set tools
+        self.__def_tool_dict = self.def_tool_dict()
         
     def setup_world(self):
         """ Set up model method """
@@ -262,19 +268,42 @@ class AugmentedGeneration(ABC):
         """ Generate method
         :return: str
         """
-        content = self.retrieval(query)
-        prompt = DERIVE_PROMPT % (content, query)
-        instantane_memory = self.__work_memory.copy()
-        instantane_memory.append({"role": "user", "content": prompt})
-        text = self.__ai_service.generate(instantane_memory)
-        print("Pensamiento:", text)
-        return text
+        try:
+            content = self.retrieval(query)
+            prompt = DERIVE_PROMPT % (content, query)
+            instantane_memory = self.__work_memory.copy()
+            instantane_memory.append({"role": "user", "content": prompt})
+            text = self.__ai_service.generate(instantane_memory)
+            print("Pensamiento:", text)
+            if self.__def_tool_dict:
+                tool = self.__def_tool_dict.get(self.__role.tool)
+                if tool:
+                    text = tool(text)
+                else:
+                    text = "No se ha encontrado la herramienta"
+            return text
+        except Exception as e:
+            traceback.print_exc()
+            return "Lo lamento, no puedo responder en este momento"
 
+    def get_role(self) -> Role:
+        """ Get role method
+        :return: Role
+        """
+        return self.__role
+    
     @abstractmethod
     def retrieval(self, query) -> str:
         """ Set retrieval method
         :param query: query
         :return: str
+        """
+        pass
+
+    @abstractmethod
+    def def_tool_dict(self) -> dict | None:
+        """ Set tool array method
+        :return: dict
         """
         pass
 
@@ -432,7 +461,6 @@ class Dialog(ABC):
         self.__deep_count = 0
         self.__deep_limit = 3
 
-        
     def setup_world(self):
         """ Set up model method """
         # Define role
@@ -445,6 +473,12 @@ class Dialog(ABC):
         :return: model
         """
         return self.model
+    
+    def get_role(self) -> Role:
+        """ Get role method
+        :return: Role
+        """
+        return self.__role
     
     def set_dialog_state(self, dialog_state) -> None:
         """ Set dialog state method
@@ -511,19 +545,40 @@ class Dialog(ABC):
         # Set up model
         self.set_up_model()
 
-    def team_inquiry(self, team, data):
-        canal = self.state['canal']
-        dto = {
-            "data": {
-                'text': data,
-            },
-        }
+    def team_inquiry(self, team, data, operation, session_flag) -> str:
+        canales = self.state['canales']
+        canal = canales.get(team)
+        dto = None
+        if operation:
+            dto = {
+                "data": {
+                    'text': data,
+                    'operation': operation
+                },
+            }
+        else:
+            if session_flag:
+                pass
+                #session_id = self.state['session_id']
+                #print("=> session_flag -> " + session_id)
+                #dto = {
+                #    "data": {
+                #        'text': data,
+                #        'session_id': session_id
+                #    },
+                #}
+            else:
+                dto = {
+                    "data": {
+                        'text': data
+                    },
+                }
         response = canal.post(team.lower(), dto)
         if response['status']:
             return response['message']['response']
-        return "Sin respuesta"
+        return "Lo lamento, no puedo responder en este momento"
 
-    def transition(self, dialog_state, query, team_source=False) -> str:
+    def transition(self, owner, dialog_state, query, team_source=False) -> str:
         text = ""
         node = self.__dfa[dialog_state]
         if not isinstance(node, list):
@@ -534,7 +589,7 @@ class Dialog(ABC):
             options += f"{cont}) {item.text}\n"
             cont += 1
         prompt = CLASSIFICATION_PROMPT % (query, options)
-        print("Prompt:", prompt)
+        print("Query:", query, "\n", "Options:", options)
         self.__meta_work_memory.append({"role": "user", "content": prompt})
         text = self.__ai_service.generate(self.__meta_work_memory)
         self.__meta_work_memory = []
@@ -556,10 +611,10 @@ class Dialog(ABC):
             self.__work_memory.append({"role": "user", "content": query})
             self.__work_memory.append({"role": "system", "content": select_node.text})  
 
-        new_owner, new_dialog_state, text = self.do_transition(select_node.children[0], query)
-        return new_owner, new_dialog_state, text
+        new_owner, new_dialog_state, text, team = self.do_transition(owner, select_node.children[0], query)
+        return new_owner, new_dialog_state, text, team
 
-    def do_transition(self, node, query) -> str:
+    def do_transition(self, owner, node, query) -> str:
         """ Generate method
         :return: str
         """          
@@ -567,12 +622,45 @@ class Dialog(ABC):
             print("-> node:", node.text)
             self.__work_memory.append({"role": "system", "content": node.text})
         elif isinstance(node, ActionNode):
+
+            #------------------------------
+            # Accion
+            #------------------------------
+
             print("-> node action:", node.action)
-            self.__work_memory.append({"role": "system", "content": node.text})
-            text = self.team_inquiry(node.team, query)
+            if node.tool and not node.tool == "Ninguno":
+                print("-> node tool:", node.tool)
+                self.__work_memory.append({"role": "system", "content": node.text})            
+                res = self.__ai_service.generate(self.__work_memory)
+
+                print("-> node tool: envia", res)
+
+                text = self.team_inquiry(node.team, res, node.tool, False)   
+            else:
+
+                #------------------------------
+                # Lllamada
+                #------------------------------
+
+                print("-> node team:", node.team)
+                # Verifica si el nodo es termianl ya que significa
+                # que el dialogo cambia de agente
+                if node.is_terminal:
+                    print("-> node team -> es terminal -> " + node.text)
+                    self.__work_memory.append({"role": "system", "content": node.text})
+                    res = self.__ai_service.generate(self.__work_memory)
+                    print("-> node team -> envia:", res)
+                    #text = self.team_inquiry(node.team, res, None, True)
+                    return node.team, DialogState.START, res, node.team
+                else:
+                    print("-> node team -> continua")
+                    self.__work_memory.append({"role": "system", "content": node.text})
+                    print("-> node team -> envia:", query)
+                    text = self.team_inquiry(node.team, query, node.tool, False)
+
             self.__deep_count += 1
             if self.__deep_count < self.__deep_limit:
-                return self.transition(node.performative, text)
+                return self.transition(owner, node.performative, text, True)
             else:
                 self.__deep_count = 0
                 return "Web", "start", "Lo lamento me he perdido, ¿podrías repetir la pregunta?"
@@ -582,10 +670,9 @@ class Dialog(ABC):
         res = self.__ai_service.generate(self.__work_memory)
         self.__work_memory.append({"role": "system", "content": res})
 
-        new_owner = "Web"
         new_dialog_state = node.performative
         if not node.is_terminal:
-            print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
-            return new_owner, new_dialog_state, res
-        print("=> new_owner:", new_owner, "new_dialog_state:", new_dialog_state)
-        return new_owner, new_dialog_state, None
+            print("=> new_owner:", owner, "new_dialog_state:", new_dialog_state)
+            return owner, new_dialog_state, res, owner
+        print("$$$> new_owner:", owner, "new_dialog_state:", new_dialog_state)
+        return owner, new_dialog_state, None, owner

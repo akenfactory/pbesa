@@ -367,6 +367,13 @@ class Adm(object):
                     state_list = self.__db[agent.id].find({})
                     agent.state = state_list[0]
                     
+        def get_agent(self, agent_id:str) -> Agent:
+            """ Get an agent from the system
+            @param agentID Agent ID
+            @return Agent Agent
+            """
+            return self.agents_table[agent_id]
+                    
         def send_event(self, agent_id:str, event:any, data:any) -> bool:
             """
             Send an event to another agent.

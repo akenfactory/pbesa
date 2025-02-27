@@ -24,7 +24,8 @@ Respuesta: 3
 Ahora, evalúa el siguiente caso:
 
 Texto: "%s"
-Opciones:%s
+Opciones:
+%s
 Respuesta:
 """
 

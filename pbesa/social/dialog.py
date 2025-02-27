@@ -41,10 +41,11 @@ class Node:
         self.children = []
 
 class ActionNode(Node):
-    def __init__(self, performative, text, action=None, team=None, is_terminal=False):
+    def __init__(self, performative, text, action=None, team=None, tool=None, is_terminal=False):
         super().__init__(performative=performative, text=text, is_terminal=is_terminal)
         self.action = action
         self.team = team
+        self.tool = tool
 
 class DeclarativeNode(Node):
     def __init__(self, performative, text, is_terminal=False):
@@ -144,7 +145,7 @@ def recorrer_interacciones(obj):
                 if tipo == "dialogo":
                     nuevo_nodo = DeclarativeNode(performative=current_id, text=texto, is_terminal=is_terminal)
                 elif tipo == "llamada a equipo":
-                    nuevo_nodo = ActionNode(performative=current_id, text=texto, action=tipo, team=obj["equipo"], is_terminal=is_terminal)
+                    nuevo_nodo = ActionNode(performative=current_id, text=texto, action=tipo, team=obj["equipo"], tool=obj["herramienta"], is_terminal=is_terminal)
                 elif tipo == "respuesta de equipo":
                     nuevo_nodo = ResponseNode(performative=current_id, text=texto, is_terminal=is_terminal)
                 else:
