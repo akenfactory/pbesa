@@ -602,9 +602,15 @@ class Dialog(ABC):
                 break
         if not select_node:
             print("=> No se seleccionó ninguna opción")
-            select_node = node[0]
-            print(select_node.text)
-
+            print("=> Node:", node)
+            print("=> len node:", len(node))
+            if node and len(node)> 0: 
+                select_node = node[0]
+                print(select_node.text)
+            text = "Lo lamento, no puedo responder en este momento"
+            print("???> text:", text)
+            return owner, DialogState.START, text, owner
+        
         if team_source:
             self.__work_memory.append({"role": "system", "content": select_node.text})
         else:
@@ -633,6 +639,11 @@ class Dialog(ABC):
                 self.__work_memory.append({"role": "system", "content": node.text})            
                 res = self.__ai_service.generate(self.__work_memory)
 
+                # Check if res is empty
+                if not res or res == "":
+                    res = "Lo lamento, no puedo responder en este momento"
+                    return owner, DialogState.START, res, owner
+
                 print("-> node tool: envia", res)
 
                 text = self.team_inquiry(node.team, res, node.tool, False)   
@@ -649,6 +660,12 @@ class Dialog(ABC):
                     print("-> node team -> es terminal -> " + node.text)
                     self.__work_memory.append({"role": "system", "content": node.text})
                     res = self.__ai_service.generate(self.__work_memory)
+
+                    # Check if res is empty
+                    if not res or res == "":
+                        res = "Lo lamento, no puedo responder en este momento"
+                        return owner, DialogState.START, res, owner
+
                     print("-> node team -> envia:", res)
                     #text = self.team_inquiry(node.team, res, None, True)
                     return node.team, DialogState.START, res, node.team
@@ -663,16 +680,26 @@ class Dialog(ABC):
                 return self.transition(owner, node.performative, text, True)
             else:
                 self.__deep_count = 0
-                return "Web", "start", "Lo lamento me he perdido, ¿podrías repetir la pregunta?"
+                return "Web", DialogState.START, "Lo lamento me he perdido, ¿podrías repetir la pregunta?"
         else:
-            print("-> Otro tipo de nodo:", node.text)
+            print("!!!!!!!!!!!!!!!!!!!!!!!> Otro tipo de nodo:", node.text)
 
         res = self.__ai_service.generate(self.__work_memory)
         self.__work_memory.append({"role": "system", "content": res})
+
+        # Check if res is empty
+        if not res or res == "":
+            res = "Lo lamento, no puedo responder en este momento"
+            return owner, DialogState.START, res, owner
+
+        print("=> Pensamiento DEEP:", res)
 
         new_dialog_state = node.performative
         if not node.is_terminal:
             print("=> new_owner:", owner, "new_dialog_state:", new_dialog_state)
             return owner, new_dialog_state, res, owner
+        
+        print(f"Tipe node: {type(node)}")
+
         print("$$$> new_owner:", owner, "new_dialog_state:", new_dialog_state)
-        return owner, new_dialog_state, None, owner
+        return owner, new_dialog_state, res, owner
