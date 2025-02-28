@@ -34,26 +34,27 @@ class DialogState:
 #------------------------------------------
 
 class Node:
-    def __init__(self, performative, text=None, is_terminal=False):
+    def __init__(self, actor, performative, text=None, is_terminal=False):
+        self.actor = actor
         self.performative = performative  # Se asigna el ID del objeto (en str)
         self.text = text
         self.is_terminal = is_terminal
         self.children = []
 
 class ActionNode(Node):
-    def __init__(self, performative, text, action=None, team=None, tool=None, is_terminal=False):
-        super().__init__(performative=performative, text=text, is_terminal=is_terminal)
+    def __init__(self, actor, performative, text, action=None, team=None, tool=None, is_terminal=False):
+        super().__init__(actor, performative=performative, text=text, is_terminal=is_terminal)
         self.action = action
         self.team = team
         self.tool = tool
 
 class DeclarativeNode(Node):
-    def __init__(self, performative, text, is_terminal=False):
-        super().__init__(performative, text, is_terminal)
+    def __init__(self, actor, performative, text, is_terminal=False):
+        super().__init__(actor, performative, text, is_terminal)
 
 class ResponseNode(Node):
-    def __init__(self, performative, text, is_terminal=False):
-        super().__init__(performative=performative, text=text, is_terminal=is_terminal)
+    def __init__(self, actor, performative, text, is_terminal=False):
+        super().__init__(actor, performative=performative, text=text, is_terminal=is_terminal)
 
 #------------------------------------------
 # Define functions
@@ -143,13 +144,13 @@ def recorrer_interacciones(obj):
                 # Normalizamos el valor de "tipo" (se pasa a minúsculas y se reemplaza "í" por "i")
                 tipo = obj["tipo"].lower().replace("í", "i").strip()
                 if tipo == "dialogo":
-                    nuevo_nodo = DeclarativeNode(performative=current_id, text=texto, is_terminal=is_terminal)
+                    nuevo_nodo = DeclarativeNode(actor=obj["actor"], performative=current_id, text=texto, is_terminal=is_terminal)
                 elif tipo == "llamada a equipo":
-                    nuevo_nodo = ActionNode(performative=current_id, text=texto, action=tipo, team=obj["equipo"], tool=obj["herramienta"], is_terminal=is_terminal)
+                    nuevo_nodo = ActionNode(actor=obj["actor"], performative=current_id, text=texto, action=tipo, team=obj["equipo"], tool=obj["herramienta"], is_terminal=is_terminal)
                 elif tipo == "respuesta de equipo":
-                    nuevo_nodo = ResponseNode(performative=current_id, text=texto, is_terminal=is_terminal)
+                    nuevo_nodo = ResponseNode(actor=obj["actor"], performative=current_id, text=texto, is_terminal=is_terminal)
                 else:
-                    nuevo_nodo = Node(performative=current_id, text=texto, is_terminal=is_terminal)
+                    nuevo_nodo = Node(actor=obj["actor"], performative=current_id, text=texto, is_terminal=is_terminal)
                 
                 # Se asignan los nodos hijos construidos
                 nuevo_nodo.children = children

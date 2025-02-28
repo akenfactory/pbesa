@@ -13,6 +13,7 @@
 # Define resources
 # --------------------------------------------------------
 
+import re
 import traceback
 from pydantic import BaseModel
 from typing import List, Optional
@@ -577,6 +578,21 @@ class Dialog(ABC):
         if response['status']:
             return response['message']['response']
         return "Lo lamento, no puedo responder en este momento"
+    
+    def get_text(self, inputs) -> str:
+        matches = re.findall(r'<\|im_start\|>(user|assistant)\n(.*?)<\|im_end\|>', inputs, re.DOTALL)
+        if matches:
+            messages = []
+            for speaker, text in matches:
+                messages.append({
+                    "Assistant": speaker.capitalize(),
+                    "User": text.strip()
+                })
+            if len(messages) > 0:
+                return messages[-1]["Assistant"]
+            else:
+                return messages[-1]["User"]
+        return inputs
 
     def transition(self, owner, dialog_state, query, team_source=False) -> str:
         text = ""
@@ -609,15 +625,17 @@ class Dialog(ABC):
                 print(select_node.text)
             text = "Lo lamento, no puedo responder en este momento"
             print("???> text:", text)
+            text = self.get_text(text)
             return owner, DialogState.START, text, owner
         
         if team_source:
-            self.__work_memory.append({"role": "system", "content": select_node.text})
+            self.__work_memory.append({"role": "user", "content": select_node.text})
         else:
             self.__work_memory.append({"role": "user", "content": query})
-            self.__work_memory.append({"role": "system", "content": select_node.text})  
+            self.__work_memory.append({"role": "user", "content": select_node.text})  
 
         new_owner, new_dialog_state, text, team = self.do_transition(owner, select_node.children[0], query)
+        text = self.get_text(text)
         return new_owner, new_dialog_state, text, team
 
     def do_transition(self, owner, node, query) -> str:
@@ -626,7 +644,7 @@ class Dialog(ABC):
         """          
         if isinstance(node, DeclarativeNode):
             print("-> node:", node.text)
-            self.__work_memory.append({"role": "system", "content": node.text})
+            self.__work_memory.append({"role": "user", "content": node.text})
         elif isinstance(node, ActionNode):
 
             #------------------------------
@@ -636,7 +654,7 @@ class Dialog(ABC):
             print("-> node action:", node.action)
             if node.tool and not node.tool == "Ninguno":
                 print("-> node tool:", node.tool)
-                self.__work_memory.append({"role": "system", "content": node.text})            
+                self.__work_memory.append({"role": "user", "content": node.text})            
                 res = self.__ai_service.generate(self.__work_memory)
 
                 # Check if res is empty
@@ -658,8 +676,10 @@ class Dialog(ABC):
                 # que el dialogo cambia de agente
                 if node.is_terminal:
                     print("-> node team -> es terminal -> " + node.text)
-                    self.__work_memory.append({"role": "system", "content": node.text})
+                    self.__work_memory.append({"role": "user", "content": node.text})
                     res = self.__ai_service.generate(self.__work_memory)
+                    res = self.get_text(res)
+                    self.__work_memory.append({"role": "system", "content": res})
 
                     # Check if res is empty
                     if not res or res == "":
@@ -671,7 +691,7 @@ class Dialog(ABC):
                     return node.team, DialogState.START, res, node.team
                 else:
                     print("-> node team -> continua")
-                    self.__work_memory.append({"role": "system", "content": node.text})
+                    self.__work_memory.append({"role": "user", "content": node.text})
                     print("-> node team -> envia:", query)
                     text = self.team_inquiry(node.team, query, node.tool, False)
 
@@ -685,6 +705,7 @@ class Dialog(ABC):
             print("!!!!!!!!!!!!!!!!!!!!!!!> Otro tipo de nodo:", node.text)
 
         res = self.__ai_service.generate(self.__work_memory)
+        res = self.get_text(res)
         self.__work_memory.append({"role": "system", "content": res})
 
         # Check if res is empty
