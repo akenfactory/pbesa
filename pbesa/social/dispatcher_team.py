@@ -33,8 +33,8 @@ operate in an agile and effective manner.
 # Define resources
 # --------------------------------------------------------
 
+import logging
 from abc import abstractmethod
-
 from .worker import Task, Worker
 from ..kernel.agent import Queue
 from ..kernel.agent import Agent
@@ -56,6 +56,13 @@ class DispatcherException(Exception):
 class Delegate(Action):
     """ An action is a response to the occurrence of an event """
 
+    def active_timeout(self, ag, time: int) -> None:
+        """ Active timeout
+        @param time: Time
+        """
+        logging.info(f"[Delegate] Send event timeout {time}")
+        self.adm.send_event(ag, 'timeout', {'time': time, 'command': 'start'})
+
     def execute(self, data: any) -> None:
         """ 
         Response.
@@ -67,43 +74,10 @@ class Delegate(Action):
             'dtoList': []
         }
         self.adm.send_event(ag, 'task', data['dto'])
-
-# --------------------------------------------------------
-# Define DelegateAction
-# --------------------------------------------------------
-
-class DelegateAction(Action):
-    """ An action is a response to the occurrence of an event """
-
-    def execute(self, data: any) -> None:
-        """ 
-        Response.
-        @param data Event data 
-        """
-        self.delegate(data)
-    
-    def active_timeout(self, time: int) -> None:
-        """ Active timeout
-        @param time: Time
-        """
-        self.adm.send_event(self.agent.id, 'timeout', {'time': time, 'dto': None})
-
-    def to_assign(self, data: any) -> None:
-        """ Assign
-        @param data: Data
-        """
-        ag = self.agent.get_free_queue().get()
-        self.agent.get_request_dict()[ag] = {
-            'dtoList': []
-        }
-        self.adm.send_event(ag, 'task', data)
-
-    @abstractmethod
-    def delegate(self, data: any) -> None:
-        """ Delegate
-        @param data: Data
-        """
-        pass
+        if 'timeout' in self.agent.state:
+            self.active_timeout(ag, self.agent.state['timeout'])
+        else:
+            raise DispatcherException('[Delegate]: Timeout not defined in the state as "timeout" key')
 
 # --------------------------------------------------------
 # Define Action
@@ -141,11 +115,13 @@ class ResponseAction(Action):
         """
         request = self.agent.get_request_dict()[data['source']]
         if 'timeout' in data:
-            self.send_response(request)
+            logging.info(f"[ResponseAction][{self.agent.id}]: Timeout ******************")
+            request['gateway'].put("TIMEOUT")
         else:
             request['dtoList'].append(data['result'])
             if len(request['dtoList']) >= self.agent.get_buffer_size():
                 self.send_response(request)
+                self.adm.send_event(data['source'], 'timeout', {'command': 'stop'})
 
 # --------------------------------------------------------
 # Define component

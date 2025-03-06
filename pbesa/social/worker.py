@@ -13,6 +13,7 @@
 # Define resources
 # --------------------------------------------------------
 
+import logging
 from threading import Timer
 from abc import abstractmethod
 from ..kernel.agent import Agent
@@ -35,24 +36,39 @@ class WorkerException(Exception):
 # ----------------------------------------------------------
 
 class TimeoutAction(Action):
-    """
-    @See Action
-    """
+    """ Represents the action that manages the timeout """
+
+    def __init__(self) -> None:
+        """ Constructor """
+        self.__timer = None
+        super().__init__()
 
     def handler(self) -> None:
         """ Timeout handler """
         if self.agent.is_timeout():
             self.agent.set_timeout(False)
-            self.adm.send_event(self.agent.id, 'response', 'timeout')
+            response = {
+                'timeout': True,
+                'source': self.agent.id
+            }
+            self.adm.send_event(self.agent.get_controller(), 'response', response)
 
     def execute(self, data:any) -> None:
-        """ Execute
-        @param data: Data
+        """ Execute the action
+        @param data: Event data
         """
-        if not self.agent.is_timeout():
-            self.agent.set_timeout(True)
-            r = Timer(data['time'], self.handler)
-            r.start()
+        logging.info(f"[TimeoutAction][{self.agent.id}]: Execute {data}")
+        if data['command'] == 'start':
+            if not self.agent.is_timeout():
+                self.agent.set_timeout(True)
+                self.__timer = Timer(data['time'], self.handler)
+                self.__timer.start()
+                logging.info(f"[TimeoutAction][{self.agent.id}]: Timer started")
+        else:
+            if self.__timer:
+                self.__timer.cancel()
+                self.__timer = None
+                logging.info(f"[TimeoutAction][{self.agent.id}]: Timer stopped")
 
 # --------------------------------------------------------
 # Define Task Action
@@ -126,6 +142,7 @@ class Worker(Agent):
         @param agent_id: Agent ID
         """
         self.__task_list = []
+        self.__timeout = False
         self.__controller = None
         self.__controller_type = None    
         super().__init__(agent_id)
@@ -157,6 +174,18 @@ class Worker(Agent):
         for action in actions:
             action.set_is_pool(False)
             action.set_enable_response(True)
+
+    def is_timeout(self) -> bool:
+        """ Check if the controller has a timeout
+        @return: True if the controller has a timeout, False otherwise
+        """
+        return self.__timeout
+
+    def set_timeout(self, timeout:bool) -> None:
+        """ Set timeout
+        @param timeout: Timeout
+        """
+        self.__timeout = timeout
 
     @abstractmethod
     def build(self) -> None:

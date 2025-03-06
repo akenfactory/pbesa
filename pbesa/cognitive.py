@@ -13,7 +13,8 @@
 # Define resources
 # --------------------------------------------------------
 
-import re
+import json
+import logging
 import traceback
 from pydantic import BaseModel
 from typing import List, Optional
@@ -263,7 +264,7 @@ class AugmentedGeneration(ABC):
         """ Reset method """
         self.__work_memory = []
         # Set up model
-        self.set_up_model()
+        self.setup_world()
 
     def derive(self, query) -> str:
         """ Generate method
@@ -275,7 +276,7 @@ class AugmentedGeneration(ABC):
             instantane_memory = self.__work_memory.copy()
             instantane_memory.append({"role": "user", "content": prompt})
             text = self.__ai_service.generate(instantane_memory)
-            print("Pensamiento:", text)
+            logging.info(f"Thought: {text}")
             if self.__def_tool_dict:
                 tool = self.__def_tool_dict.get(self.__role.tool)
                 if tool:
@@ -285,6 +286,10 @@ class AugmentedGeneration(ABC):
             return text
         except Exception as e:
             traceback.print_exc()
+
+            logging.info(f"------------RESET---------------")
+            self.reset()
+
             return "Lo lamento, no puedo responder en este momento"
 
     def get_role(self) -> Role:
@@ -465,9 +470,14 @@ class Dialog(ABC):
     def setup_world(self):
         """ Set up model method """
         # Define role
-        self.__work_memory.append({"role": "user", "content": self.__role.objective})
-        self.__work_memory.append({"role": "user", "content": self.__role.arquetype})
-        self.__work_memory.append({"role": "user", "content": self.__role.example})
+        instrucciones = f"Instrucciones:\n{self.__role.description}\n Tu tarea: {self.__role.objective}\n"
+        requisitos = f"Requisitos:\n{self.__role.arquetype}\n"
+        ejemplo = f"Ejemplo:\n{self.__role.example}\n"
+        continuar = "Ahora, evalúa el siguiente caso:\n"
+        self.__work_memory.append({"role": "user", "content": instrucciones})
+        self.__work_memory.append({"role": "user", "content": requisitos})
+        self.__work_memory.append({"role": "user", "content": ejemplo})
+        self.__work_memory.append({"role": "user", "content": continuar})
         
     def get_model(self) -> any:
         """ Get model method 
@@ -502,29 +512,29 @@ class Dialog(ABC):
         self.setup_world()
         interations = agent_metadata.role.interactions
         grafo = recorrer_interacciones(interations)
-        print("")
+        logging.info("")
         # Si el grafo es una lista de nodos, lo imprimimos cada uno
         if isinstance(grafo, list):
             for nodo in grafo:
                 imprimir_grafo(nodo)
         else:
             imprimir_grafo(grafo)
-        print("")
+        logging.info("")
         # Ejemplo de uso:
         self.__dfa = extraer_diccionario_nodos(grafo)
         # Mostrar el diccionario
         for clave, valor in self.__dfa.items():
-            print(f"{clave}: {valor.text}")
-        print("")
+            logging.info(f"{clave}: {valor.text}")
+        logging.info("")
         iniciadores = []
         for item in interations:
             for clave, valor in self.__dfa.items():
                 if valor.text == item['texto']:
                     iniciadores.append(valor)
-        print("Iniciadores:")
+        logging.info("Iniciadores:")
         for iniciador in iniciadores:
-            print(iniciador.text)
-        print("")
+            logging.info(iniciador.text)
+        logging.info("")
         # Set dialog state
         self.__dfa['start'] = iniciadores
 
@@ -544,7 +554,7 @@ class Dialog(ABC):
         """ Reset method """
         self.__work_memory = []
         # Set up model
-        self.set_up_model()
+        self.setup_world()
 
     def team_inquiry(self, team, data, operation, session_flag) -> str:
         canales = self.state['canales']
@@ -559,15 +569,11 @@ class Dialog(ABC):
             }
         else:
             if session_flag:
-                pass
-                #session_id = self.state['session_id']
-                #print("=> session_flag -> " + session_id)
-                #dto = {
-                #    "data": {
-                #        'text': data,
-                #        'session_id': session_id
-                #    },
-                #}
+                logging.info(f"Session flag: {session_flag}")
+                logging.info(f"------------RESET--------------- {data}")
+                self.reset()
+                return data
+                
             else:
                 dto = {
                     "data": {
@@ -577,63 +583,75 @@ class Dialog(ABC):
         response = canal.post(team.lower(), dto)
         if response['status']:
             return response['message']['response']
+        
+        logging.info(f"------------RESET---------------")
+        self.reset()
         return "Lo lamento, no puedo responder en este momento"
     
-    def get_text(self, inputs) -> str:
-        matches = re.findall(r'<\|im_start\|>(user|assistant)\n(.*?)<\|im_end\|>', inputs, re.DOTALL)
-        if matches:
-            messages = []
-            for speaker, text in matches:
-                messages.append({
-                    "Assistant": speaker.capitalize(),
-                    "User": text.strip()
-                })
-            if len(messages) > 0:
-                return messages[-1]["Assistant"]
-            else:
-                return messages[-1]["User"]
-        return inputs
+    def get_text(self, mensaje) -> str:
+        mensaje_limpio = mensaje.replace("<|im_start|>user<|im_sep|>", "").replace("<|im_start|>system<|im_sep|>", "")
+        mensaje_limpio = mensaje_limpio.replace("<|im_start|>", "").replace("<|im_sep|>", "").replace("<|im_end|>", "")
+        mensaje_limpio = mensaje_limpio.replace("[Usuario]: ", "").replace("[Sistema]: ", "")
+        return mensaje_limpio.strip()
 
     def transition(self, owner, dialog_state, query, team_source=False) -> str:
+        logging.info(f"Transition: {owner} -> {dialog_state}, Team: {team_source}, Query: {query}")
         text = ""
+
+        # Verifica que exista la performativa
+        if not dialog_state in self.__dfa:
+            logging.warning(f"------------Performativa no existe---------------")
+            self.reset()
+            return "Web", DialogState.START, "Lo lamento, no puedo responder en este momento", "Web"
+
         node = self.__dfa[dialog_state]
         if not isinstance(node, list):
             node = node.children
-        options = ""
-        cont = 1
-        for item in node:
-            options += f"{cont}) {item.text}\n"
-            cont += 1
-        prompt = CLASSIFICATION_PROMPT % (query, options)
-        print("Query:", query, "\n", "Options:", options)
-        self.__meta_work_memory.append({"role": "user", "content": prompt})
-        text = self.__ai_service.generate(self.__meta_work_memory)
-        self.__meta_work_memory = []
-        print("Pensamiento:", text)
-
-        select_node = None
-        for option in range(1, cont):
-            if str(option) in text:
-                select_node = node[option-1]
-                break
-        if not select_node:
-            print("=> No se seleccionó ninguna opción")
-            print("=> Node:", node)
-            print("=> len node:", len(node))
-            if node and len(node)> 0: 
+        
+        # Flujo de selección
+        if node and len(node)> 1:
+            logging.info(f"--> Más de una opción.")
+            options = ""
+            cont = 1
+            for item in node:
+                options += f"{cont}) {item.text}\n"
+                cont += 1
+            prompt = CLASSIFICATION_PROMPT % (query, options)
+            logging.info(f"Query: {query},\n Options:\n{options}")
+            self.__meta_work_memory.append({"role": "user", "content": prompt})
+            text = self.__ai_service.generate(self.__meta_work_memory)
+            logging.info(f"Thought: {text}")
+            self.__meta_work_memory = []
+            text = self.get_text(text)
+            select_node = None
+            for option in range(1, cont):
+                if str(option) in text:
+                    select_node = node[option-1]
+                    logging.info(f"Select node: {select_node.text}")
+                    break
+            if not select_node:
+                logging.info("=> No se seleccionó ninguna opción")
+                logging.info(f"=> Node: {node}")
+                logging.info(f"=> len node: {len(node)}")
                 select_node = node[0]
-                print(select_node.text)
-            text = "Lo lamento, no puedo responder en este momento"
-            print("???> text:", text)
+                logging.info(f"=> Selecciona el primer nodo: {select_node.text}")               
+        elif node and len(node) == 1:
+            logging.info(f"--> Una opción.")
+            select_node = node[0]
+        else:
+            logging.info(f"------------RESET---------------")
+            self.reset()
+            logging.info(f"???> text: {text} es terminal")
             text = self.get_text(text)
             return owner, DialogState.START, text, owner
-        
+
+        # Flujo normal
+        logging.info(f"Flujo normal: {select_node.text}")
         if team_source:
             self.__work_memory.append({"role": "user", "content": select_node.text})
         else:
             self.__work_memory.append({"role": "user", "content": query})
             self.__work_memory.append({"role": "user", "content": select_node.text})  
-
         new_owner, new_dialog_state, text, team = self.do_transition(owner, select_node.children[0], query)
         text = self.get_text(text)
         return new_owner, new_dialog_state, text, team
@@ -643,7 +661,7 @@ class Dialog(ABC):
         :return: str
         """          
         if isinstance(node, DeclarativeNode):
-            print("-> node:", node.text)
+            logging.info(f"D -> node: {node.text}")
             self.__work_memory.append({"role": "user", "content": node.text})
         elif isinstance(node, ActionNode):
 
@@ -651,76 +669,99 @@ class Dialog(ABC):
             # Accion
             #------------------------------
 
-            print("-> node action:", node.action)
+            logging.info(f"-> node action: {node.action}")
             if node.tool and not node.tool == "Ninguno":
-                print("-> node tool:", node.tool)
-                self.__work_memory.append({"role": "user", "content": node.text})            
+                logging.info(f"-> node tool: {node.tool}")
+                self.__work_memory.append({"role": "user", "content": node.text})
+                logging.info("-----")
+                logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
+                logging.info("-----")         
                 res = self.__ai_service.generate(self.__work_memory)
-
+                logging.info(f"-> node tool: {res}")
+                res = self.get_text(res)
                 # Check if res is empty
                 if not res or res == "":
+                    logging.info("1 -> res vacio")
                     res = "Lo lamento, no puedo responder en este momento"
+
+                    logging.info(f"------------RESET---------------")
+                    self.reset()
+
                     return owner, DialogState.START, res, owner
-
-                print("-> node tool: envia", res)
-
+                logging.info(f"-> node tool: envia -> {res}")
                 text = self.team_inquiry(node.team, res, node.tool, False)   
             else:
-
                 #------------------------------
                 # Lllamada
                 #------------------------------
-
-                print("-> node team:", node.team)
+                logging.info(f"-> node team: {node.team}")
                 # Verifica si el nodo es termianl ya que significa
                 # que el dialogo cambia de agente
                 if node.is_terminal:
-                    print("-> node team -> es terminal -> " + node.text)
+                    logging.info(f"-> node team -> es terminal -> {node.text}")
                     self.__work_memory.append({"role": "user", "content": node.text})
+                    logging.info("-----")
+                    logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
+                    logging.info("-----")
                     res = self.__ai_service.generate(self.__work_memory)
                     res = self.get_text(res)
                     self.__work_memory.append({"role": "system", "content": res})
-
                     # Check if res is empty
                     if not res or res == "":
+                        logging.info("2 -> res vacio")
                         res = "Lo lamento, no puedo responder en este momento"
+                        logging.info(f"------------RESET---------------")
+                        self.reset()
                         return owner, DialogState.START, res, owner
-
-                    print("-> node team -> envia:", res)
-                    #text = self.team_inquiry(node.team, res, None, True)
+                    logging.info(f"-> node team -> envia: {res}")
+                    text = self.team_inquiry(node.team, res, None, True)
                     return node.team, DialogState.START, res, node.team
                 else:
-                    print("-> node team -> continua")
+                    logging.info("-> node team -> continua")
                     self.__work_memory.append({"role": "user", "content": node.text})
-                    print("-> node team -> envia:", query)
+                    logging.info(f"-> node team -> envia: {query}")
                     text = self.team_inquiry(node.team, query, node.tool, False)
-
+            logging.info(f"-> node team -> text: {text}")
             self.__deep_count += 1
             if self.__deep_count < self.__deep_limit:
                 return self.transition(owner, node.performative, text, True)
             else:
                 self.__deep_count = 0
+                logging.info("-> node team -> deep limit")
+
+                logging.info(f"------------RESET---------------")
+                self.reset()
+
                 return "Web", DialogState.START, "Lo lamento me he perdido, ¿podrías repetir la pregunta?"
         else:
-            print("!!!!!!!!!!!!!!!!!!!!!!!> Otro tipo de nodo:", node.text)
+            logging.info(f"!!!!!!!!!!!!!!!!!!!!!!!> Otro tipo de nodo: {node.text}")
 
+        logging.info(f"=> !!!!: {query}")
+        logging.info("-----")
+        logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
+        logging.info("-----")
         res = self.__ai_service.generate(self.__work_memory)
+        logging.info(f"=> res: {res}")
         res = self.get_text(res)
         self.__work_memory.append({"role": "system", "content": res})
-
         # Check if res is empty
         if not res or res == "":
+            logging.info("3 -> res vacio")
+
+            logging.info(f"------------RESET---------------")
+            self.reset()
+
             res = "Lo lamento, no puedo responder en este momento"
             return owner, DialogState.START, res, owner
 
-        print("=> Pensamiento DEEP:", res)
+        logging.info(f"=> Thought DEEP: {res}")
 
         new_dialog_state = node.performative
         if not node.is_terminal:
-            print("=> new_owner:", owner, "new_dialog_state:", new_dialog_state)
+            logging.info(f"=> new_owner: {owner} new_dialog_state: {new_dialog_state}")
             return owner, new_dialog_state, res, owner
         
-        print(f"Tipe node: {type(node)}")
+        logging.info(f"Tipe node: {type(node)}")
 
-        print("$$$> new_owner:", owner, "new_dialog_state:", new_dialog_state)
+        logging.info(f"$$$> new_owner: {owner} new_dialog_state: {new_dialog_state}")
         return owner, new_dialog_state, res, owner
