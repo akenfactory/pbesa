@@ -34,16 +34,14 @@ operate in an agile and effective manner.
 # Define resources
 # --------------------------------------------------------
 
+import logging
 from abc import abstractmethod
-
-from pbesa.cognitive import AugmentedGeneration, Dialog
-from pbesa.mas import Directory
-
 from .worker import Task, Worker
 from ..kernel.agent import Queue
 from ..kernel.agent import Agent
 from ..kernel.agent import Action
 from ..kernel.util import generate_short_uuid
+from pbesa.cognitive import AugmentedGeneration, Dialog
 
 # ----------------------------------------------------------
 # Defines system component exceptions
@@ -82,19 +80,22 @@ class DelegateAction(Action):
         """ Assign
         @param data: Data
         """
-        print('Assign to agent')
+        logging.info('Assign to agent...')
         ag = self.agent.get_free_queue().get()
         agent_obj = self.adm.get_agent(ag)
-        agent_count = len(self.agent.get_agent_list()) 
+        agent_count = len(self.agent.get_agent_list())
+        logging.info('List of agents: ' + str(self.agent.get_agent_list()))
         if operation:
-            print(f'With operation {operation}')
+            logging.info(f'With operation {operation}')
             exit = False
             while not exit:
                 # Chec if the agent is instance of AugmentedGeneration
                 if isinstance(agent_obj, AugmentedGeneration) or isinstance(agent_obj, Dialog):
                     # Get the role
                     role = agent_obj.get_role()
+                    logging.info(f"Comparing {role.tool} with {operation}")
                     if role.tool == operation:
+                        logging.info('The agent is operational')
                         self.agent.get_request_dict()[ag] = {
                             'gateway': data['gateway'],
                             'dtoList': []
@@ -103,25 +104,27 @@ class DelegateAction(Action):
                         self.__rewier[ag] = 0
                         exit = True
                     else:
-                        print('The agent is not available')
+                        logging.info('The agent is not available')
                         self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
                         if ag in self.__rewier:
                             self.__rewier[ag] = self.__rewier[ag] + 1
                         else:
                             self.__rewier[ag] = 0
                         if self.__rewier[ag] >= agent_count * 3:
+                            data['gateway'].put('ERROR')
                             raise SelectedDispatcherException('[Error, toAssign]: The agent is not available')
                 else:
-                    print('The agent is operational')
+                    logging.info('The agent is operational')
                     self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
                     if ag in self.__rewier:
                         self.__rewier[ag] = self.__rewier[ag] + 1
                     else:
                         self.__rewier[ag] = 0
                     if self.__rewier[ag] >= agent_count * 3:
+                        data['gateway'].put('ERROR')
                         raise SelectedDispatcherException('[Error, toAssign]: The agent is not available')
         else:
-            print('Without operation')
+            logging.info('Without operation')
             self.agent.get_request_dict()[ag] = {
                 'gateway': data['gateway'],
                 'dtoList': []
