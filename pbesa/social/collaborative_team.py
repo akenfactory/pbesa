@@ -33,6 +33,7 @@ clear and unified results.
 # Define resources
 # --------------------------------------------------------
 
+import logging
 from threading import Timer
 from abc import abstractmethod
 from ..kernel.agent import Agent
@@ -94,7 +95,7 @@ class DelegateAction(Action):
         self.agent.reset()
         self.delegate(data['dto'])
         
-    def activeTimeout(self, time:int) -> None:
+    def active_timeout(self, time:int) -> None:
         """ Active timeout
         @param time: Time
         """
@@ -109,6 +110,27 @@ class DelegateAction(Action):
             self.adm.send_event(ag, 'task', data)
         else:
             raise CollaborativeException('[Warn, toAssign]: The number of data packets exceeds the number of agents')
+        
+    def get_list_agents(self) -> list:
+        """ Get list of agents
+        @return: List of agents
+        """
+        return self.agent.get_free_list()
+    
+    def to_individual_assign(self, ag_id, data:any) -> bool:
+        """ Assign data to an agent
+        @param data: Data
+        """
+        if len(self.agent.get_free_list()) > 0:
+            index = self.agent.get_free_list().index(ag_id)
+            if index >= 0:
+                self.agent.get_free_list().pop(index)
+                self.adm.send_event(ag_id, 'task', data)
+            else:
+                return False
+        else:
+            raise CollaborativeException('[Warn, toAssign]: The number of data packets exceeds the number of agents')
+        return True
 
     @abstractmethod
     def delegate(self, data:any) -> None:
@@ -129,17 +151,24 @@ class ResponseAction(Action):
         @param data: Event data
         """
         if 'timeout' == data:
+            logging.info('Stopping timeout')
             results = {}
             for key, res in self.agent.get_check_dict().items():
                 results[key] = res
             self.end_of_process(results, True)
         else:
+            logging.info("Response received")
+            logging.info(data)
             result = 'None'
             agentID = data['source']
-            if data['result']:
+            if 'result' in data and data['result']:
                 result =  data['result']
-            self.agent.get_check_dict()[agentID] = result
+                self.agent.get_check_dict()[agentID] = result
+            else:
+                logging.warning(f"No result received for agent {agentID}")
+                self.agent.get_check_dict()[agentID] = "None"
             if self.check():
+                logging.info("All agents have responded")
                 results = {}
                 for key, res in self.agent.get_check_dict().items():
                     results[key] = res

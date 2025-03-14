@@ -466,6 +466,8 @@ class Dialog(ABC):
         # Define deep
         self.__deep_count = 0
         self.__deep_limit = 3
+        # Define knowledge
+        self.knowledge = None
 
     def setup_world(self):
         """ Set up model method """
@@ -473,10 +475,14 @@ class Dialog(ABC):
         instrucciones = f"Instrucciones:\n{self.__role.description}\n Tu tarea: {self.__role.objective}\n"
         requisitos = f"Requisitos:\n{self.__role.arquetype}\n"
         ejemplo = f"Ejemplo:\n{self.__role.example}\n"
+        if self.knowledge:
+            conocimiento = f"Conocimiento:\n{self.knowledge}\n"
         continuar = "Ahora, evalúa el siguiente caso:\n"
         self.__work_memory.append({"role": "user", "content": instrucciones})
         self.__work_memory.append({"role": "user", "content": requisitos})
         self.__work_memory.append({"role": "user", "content": ejemplo})
+        if self.knowledge:
+            self.__work_memory.append({"role": "user", "content": conocimiento})
         self.__work_memory.append({"role": "user", "content": continuar})
         
     def get_model(self) -> any:
@@ -721,7 +727,10 @@ class Dialog(ABC):
                     self.__work_memory.append({"role": "user", "content": node.text})
                     logging.info(f"-> node team -> envia: {query}")
                     text = self.team_inquiry(node.team, query, node.tool, False)
-            logging.info(f"-> node team -> text: {text}")
+                logging.info(f"-> node team -> text: {text}")
+                if text:
+                    logging.info(f"-> Adicion WM node team -> text: {text}")
+                    self.__work_memory.append({"role": "system", "content": text})
             self.__deep_count += 1
             if self.__deep_count < self.__deep_limit:
                 return self.transition(owner, node.performative, text, True)
@@ -765,3 +774,10 @@ class Dialog(ABC):
 
         logging.info(f"$$$> new_owner: {owner} new_dialog_state: {new_dialog_state}")
         return owner, new_dialog_state, res, owner
+
+    def set_knowledge(self, knowledge) -> str:
+        """ Set knowledge method
+        :param query: query
+        :return: str
+        """
+        self.knowledge = knowledge

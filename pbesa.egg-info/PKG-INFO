@@ -1,6 +1,6 @@
 Metadata-Version: 2.2
 Name: pbesa
-Version: 4.0.3
+Version: 4.0.4
 License-File: LICENSE
 License-File: LICENSE.txt
 Requires-Dist: pymongo==4.6.3
