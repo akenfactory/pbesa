@@ -609,7 +609,7 @@ class Dialog(ABC):
             logging.warning(f"------------Performativa no existe---------------")
             self.reset()
             prompt = RECOVERY_PROMPT % query
-            temp_work_memory = [{"role": "user", "content": node.text}]
+            temp_work_memory = [{"role": "user", "content": query}]
             res = self.__ai_service.generate(temp_work_memory)
             res = self.get_text(res)
             return "Web", DialogState.START, res, "Web"

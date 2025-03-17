@@ -130,7 +130,7 @@ class ResponseAction(Action):
 class DispatcherController(Agent):
     """ Represents the agent that delegates the execution of actions to other agents """
     
-    def __init__(self, agent_id:str, buffer_size:int, pool_size:int) -> None:
+    def __init__(self, agent_id:str, buffer_size:int, pool_size:int, delegate=None) -> None:
         """ Constructor
         @param agent_id: Agent ID
         @param type: Pool type
@@ -139,15 +139,20 @@ class DispatcherController(Agent):
         """
         self.__buffer_size = buffer_size
         self.__request_dict = {}
+        self.__pool_size = pool_size
         self.__free_queue = Queue(pool_size)
         self.__agent_list = []
+        self.__delegate = delegate
         super().__init__(agent_id)
 
     def setup(self) -> None:
         """ Set up method """
         self._social = True
         self.add_behavior('Delegate')
-        self.bind_action('Delegate', 'delegate', Delegate())
+        if self.__delegate:
+            self.bind_action('Delegate', 'delegate', self.__delegate())
+        else:
+            self.bind_action('Delegate', 'delegate', Delegate())
         self.add_behavior('Notify')
         self.bind_action('Notify', 'notify', NotifyFreeAction())
         self.add_behavior('Response')
@@ -161,6 +166,8 @@ class DispatcherController(Agent):
         self.__agent_list.append(agent.id)
         agent.set_controller(self.id)
         agent.set_controller_type('POOL')
+        if len(self.__agent_list) > self.__pool_size:
+            raise DispatcherException('[Warn, suscribeAgent]: The pool is full')
         self.__free_queue.put(agent.id)
         actions = agent.get_actions()
         for action in actions:
@@ -189,6 +196,12 @@ class DispatcherController(Agent):
     def build(self) -> None:
         """ Builds the agent """
         pass
+
+    def get_agent_list(self) -> list:
+        """ Gets the agent list
+        @return: Agent list
+        """
+        return self.__agent_list
 
     def get_free_queue(self) -> Queue:
         """ Gets the free queue
