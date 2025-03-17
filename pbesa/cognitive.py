@@ -21,7 +21,7 @@ from typing import List, Optional
 from abc import ABC, abstractmethod
 from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
 from pbesa.social.dialog import DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, ActionNode, DeclarativeNode#, TerminalNode
-from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT
+from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT
 # --------------------------------------------------------
 # Define DTOs
 # --------------------------------------------------------
@@ -518,29 +518,29 @@ class Dialog(ABC):
         self.setup_world()
         interations = agent_metadata.role.interactions
         grafo = recorrer_interacciones(interations)
-        logging.info("")
+        logging.debug("")
         # Si el grafo es una lista de nodos, lo imprimimos cada uno
         if isinstance(grafo, list):
             for nodo in grafo:
                 imprimir_grafo(nodo)
         else:
             imprimir_grafo(grafo)
-        logging.info("")
+        logging.debug("")
         # Ejemplo de uso:
         self.__dfa = extraer_diccionario_nodos(grafo)
         # Mostrar el diccionario
         for clave, valor in self.__dfa.items():
-            logging.info(f"{clave}: {valor.text}")
-        logging.info("")
+            logging.debug(f"{clave}: {valor.text}")
+        logging.debug("")
         iniciadores = []
         for item in interations:
             for clave, valor in self.__dfa.items():
                 if valor.text == item['texto']:
                     iniciadores.append(valor)
-        logging.info("Iniciadores:")
+        logging.debug("Iniciadores:")
         for iniciador in iniciadores:
-            logging.info(iniciador.text)
-        logging.info("")
+            logging.debug(iniciador.text)
+        logging.debug("")
         # Set dialog state
         self.__dfa['start'] = iniciadores
 
@@ -608,7 +608,11 @@ class Dialog(ABC):
         if not dialog_state in self.__dfa:
             logging.warning(f"------------Performativa no existe---------------")
             self.reset()
-            return "Web", DialogState.START, "Lo lamento, no puedo responder en este momento", "Web"
+            prompt = RECOVERY_PROMPT % query
+            temp_work_memory = [{"role": "user", "content": node.text}]
+            res = self.__ai_service.generate(temp_work_memory)
+            res = self.get_text(res)
+            return "Web", DialogState.START, res, "Web"
 
         node = self.__dfa[dialog_state]
         if not isinstance(node, list):

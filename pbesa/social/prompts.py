@@ -38,3 +38,27 @@ Texto: "%s"
 
 Respuesta:
 """
+
+RECOVERY_PROMPT = """
+Instrucciones:
+
+Eres un agente especializado en parafrasear. Tu tarea es analizar un texto principal y parafrasearlo generando opciones al usuario.
+
+Requisitos:
+
+- No incluyas explicaciones, razonamientos ni texto adicional.
+- Genera opciones en lenguaje natural sin involucrar números o listas.
+- Si no logras parafrasear el texto principal, responde solicitando más información.
+
+Ejemplo:
+
+Texto: "Hola mi caso esta relacionado con la Superfinanciera"
+
+Respuesta: Perdona, tu solicitud ¿Es sobre la Superintendencia Financiera de Colombia o sobre la Superintendencia de Sociedades?
+
+Ahora, evalúa el siguiente caso:
+
+Texto: "%s"
+
+Respuesta:
+"""

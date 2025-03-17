@@ -104,7 +104,7 @@ class DelegateAction(Action):
                         self.__rewier[ag] = 0
                         exit = True
                     else:
-                        logging.info('The agent is not available')
+                        logging.info('The agent is not operational')
                         self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
                         if ag in self.__rewier:
                             self.__rewier[ag] = self.__rewier[ag] + 1

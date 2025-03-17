@@ -13,6 +13,7 @@
 # Define resources
 # --------------------------------------------------------
 
+import logging
 import datetime
 import traceback
 from .templates import AFIRMATIVE_RESPONSE, GET_DATE
@@ -199,6 +200,6 @@ def imprimir_grafo(nodo, nivel=0):
     indent = "  " * nivel
     # Se muestra la clase del nodo y algunos atributos
     clase = nodo.__class__.__name__
-    print(f"{indent}{clase} (performative: {nodo.performative}, text/action: {nodo.text if hasattr(nodo, 'text') and nodo.text is not None else getattr(nodo, 'action', None)}, terminal: {nodo.is_terminal})")
+    logging.debug(f"{indent}{clase} (performative: {nodo.performative}, text/action: {nodo.text if hasattr(nodo, 'text') and nodo.text is not None else getattr(nodo, 'action', None)}, terminal: {nodo.is_terminal})")
     for child in nodo.children:
         imprimir_grafo(child, nivel + 1)
