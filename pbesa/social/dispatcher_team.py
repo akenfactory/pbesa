@@ -188,7 +188,7 @@ class DispatcherController(Agent):
         @param event: Event
         @param data: Data
         """
-        from pbesa.kernel.system.adm import Adm
+        from ..mas import Adm
         for agent_id in self.__agent_list:
             Adm().send_event(agent_id, event, data)
     

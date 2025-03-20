@@ -57,18 +57,18 @@ class TimeoutAction(Action):
         """ Execute the action
         @param data: Event data
         """
-        logging.info(f"[TimeoutAction][{self.agent.id}]: Execute {data}")
+        logging.debug(f"[TimeoutAction][{self.agent.id}]: Execute {data}")
         if data['command'] == 'start':
             if not self.agent.is_timeout():
                 self.agent.set_timeout(True)
                 self.__timer = Timer(data['time'], self.handler)
                 self.__timer.start()
-                logging.info(f"[TimeoutAction][{self.agent.id}]: Timer started")
+                logging.debug(f"[TimeoutAction][{self.agent.id}]: Timer started")
         else:
             if self.__timer:
                 self.__timer.cancel()
                 self.__timer = None
-                logging.info(f"[TimeoutAction][{self.agent.id}]: Timer stopped")
+                logging.debug(f"[TimeoutAction][{self.agent.id}]: Timer stopped")
 
 # --------------------------------------------------------
 # Define Task Action
