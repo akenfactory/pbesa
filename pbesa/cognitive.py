@@ -642,9 +642,10 @@ class Dialog(ABC):
 
     def get_text(self, mensaje) -> str:
         if mensaje:
-            mensaje_limpio = mensaje.replace("<|im_start|>user<|im_sep|>", "").replace("<|im_start|>system<|im_sep|>", "")
-            mensaje_limpio = mensaje_limpio.replace("<|im_start|>", "").replace("<|im_sep|>", "").replace("<|im_end|>", "")
-            mensaje_limpio = mensaje_limpio.replace("[Usuario]: ", "").replace("[Sistema]: ", "")
+            mensaje_limpio = mensaje.replace("<|im_start|>user<|im_sep|>", "").replace("<|im_start|>system<|im_sep|>", "") \
+                .replace("<|im_start|>", "").replace("<|im_sep|>", "").replace("<|im_end|>", "") \
+                .replace("[Usuario]: ", "").replace("[Sistema]: ", "") \
+                .replace("<|user|>", "").replace("<|system|>", "")
             return mensaje_limpio.strip()
         else:
             return ""
