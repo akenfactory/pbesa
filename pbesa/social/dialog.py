@@ -37,7 +37,7 @@ class DialogState:
 class Node:
     def __init__(self, actor, performative, text=None, is_terminal=False):
         self.actor = actor
-        self.performative = performative  # Se asigna el ID del objeto (en str)
+        self.performative = performative
         self.text = text
         self.is_terminal = is_terminal
         self.children = []
@@ -54,6 +54,10 @@ class DeclarativeNode(Node):
         super().__init__(actor, performative, text, is_terminal)
 
 class ResponseNode(Node):
+    def __init__(self, actor, performative, text, is_terminal=False):
+        super().__init__(actor, performative=performative, text=text, is_terminal=is_terminal)
+
+class GotoNode(Node):
     def __init__(self, actor, performative, text, is_terminal=False):
         super().__init__(actor, performative=performative, text=text, is_terminal=is_terminal)
 
@@ -125,7 +129,7 @@ def recorrer_interacciones(obj):
             # Si tiene la clave "tipo", creamos un nodo (según su valor) y procesamos sus hijos
             if "tipo" in obj:
                 # Se usa el id del diccionario convertido a cadena para 'performative'
-                current_id = str(id(obj))
+                current_id = obj["id"] if "id" in obj else str(id(obj))
                 texto = obj.get("texto")
                 
                 # Procesamos los nodos hijos buscando en las claves "interacciones" y "Interacciones"
@@ -150,6 +154,8 @@ def recorrer_interacciones(obj):
                     nuevo_nodo = ActionNode(actor=obj["actor"], performative=current_id, text=texto, action=tipo, team=obj["equipo"], tool=obj["herramienta"], is_terminal=is_terminal)
                 elif tipo == "respuesta de equipo":
                     nuevo_nodo = ResponseNode(actor=obj["actor"], performative=current_id, text=texto, is_terminal=is_terminal)
+                elif tipo == "salta a":
+                    nuevo_nodo = GotoNode(actor=obj["actor"], performative=current_id, text=texto, is_terminal=is_terminal)
                 else:
                     nuevo_nodo = Node(actor=obj["actor"], performative=current_id, text=texto, is_terminal=is_terminal)
                 
@@ -168,8 +174,10 @@ def recorrer_interacciones(obj):
                                 nodos.extend(resultado)
                             else:
                                 nodos.append(resultado)
+                # Devolvemos la lista de nodos encontrados
                 return nodos if nodos else None
         else:
+            # Si no es ni lista ni diccionario, devolvemos None
             return None
     except Exception as e:
         print(f"Error al recorrer interacciones: {e}")

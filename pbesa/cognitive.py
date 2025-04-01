@@ -13,6 +13,7 @@
 # Define resources
 # --------------------------------------------------------
 
+import uuid
 import json
 import logging
 import traceback
@@ -20,13 +21,16 @@ from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
 from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
-from pbesa.social.dialog import DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, ActionNode, DeclarativeNode#, TerminalNode
+from pbesa.social.dialog import (
+    DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
+    ActionNode, DeclarativeNode, GotoNode) #, TerminalNode
 from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT
 # --------------------------------------------------------
 # Define DTOs
 # --------------------------------------------------------
 
 class InteraccionDTO(BaseModel):
+    id: str
     tipo: str
     texto: str
     actor: str
@@ -38,6 +42,7 @@ def interaccion_serializer(interaccion):
     if isinstance(interaccion, list):
         return [interaccion_serializer(i) for i in interaccion]
     return {
+        "id": interaccion["id"] if "id" in interaccion and interaccion["id"] else str(uuid.uuid4()),
         "tipo": interaccion["tipo"],
         "texto": interaccion["texto"],
         "actor": interaccion["actor"],
@@ -477,6 +482,10 @@ class Dialog(ABC):
         }
         # Define recovery message
         self.RECOVERY_MSG = "Lo lamento, puedes darme más detalles o reformular"
+        # Define vertices list
+        self.__vertices = []
+        # Define visited nodes
+        self.__visited_nodes = 0
 
     def setup_world(self):
         """ Set up model method """
@@ -681,20 +690,25 @@ class Dialog(ABC):
             }
             logging.info(f"Recovery attemps: {self.__recovery["counter"]}")
             # Verifica si se ha alcanzado el límite de recuperación
-            if self.__recovery['counter'] <= 3:
-                self.notify("identificando la performativa...")
+            if self.__recovery['counter'] <= 3 and self.__visited_nodes < 5:
+                self.notify("identificando concepto...")
+                #--------------------------
                 # Verifica que exista la performativa
                 if not dialog_state in self.__dfa:
-                    self.notify("performativa no encontrada")
+                    self.notify("concepto no encontrado")
                     return self.recovery(query)
                 # Performativa encontrada
                 children = None
-                self.notify("performativa encontrada")
+                self.notify("concepto encontrado")
+                #--------------------------
+                # Obtiene los hijos del nodo
                 node = self.__dfa[dialog_state]
                 if not isinstance(node, list):
                     children = node.children
                 else:
+                    # Es una lista de nodos
                     children = node
+                #--------------------------
                 # Flujo de selección
                 select_node = None
                 self.notify("flujo de seleccion...")
@@ -725,20 +739,52 @@ class Dialog(ABC):
                     logging.info(f"--> Una opción.")
                     select_node = children[0]
                 else:
-                    logging.info(f"???????????????????> text: {res} es terminal")    
-                # Nuevo nodo
+                    logging.info("???> Es un nodo terminal o iniciador")
+                    return self.recovery(query)
+                #--------------------------
+                # Verifica si es un nodo
+                # que ya fue recorrido
+                if select_node.performative in self.__vertices:
+                    logging.info(f"-> nodo ya recorrido: {select_node.text}")
+                    self.__visited_nodes += 1
+                else:
+                    logging.info(f"-> nodo no recorrido: {select_node.text}")
+                    self.__visited_nodes = 0
+                    # Maraca el nodo como visitado
+                    self.__vertices.append(select_node.performative)
+                #---------------------------
+                # Verifica si el nodo es un
+                # nodo de salto
+                if isinstance(select_node, GotoNode):
+                    logging.info(f"-> node de salto: {select_node.text}")
+                    performative = select_node.text.replace("Salta a:", "").strip()
+                    select_node = self.__dfa[performative]
+                    logging.info(f"-> Salto: {select_node.text}, performativa: {select_node.performative}")
+                #---------------------------
+                # Efectua transicion
                 if select_node:
                     res = select_node.text
                     node = select_node.children[0]
-                # Nodo seleccionado
                 logging.info(f"Flujo normal: {res}")
                 self.notify(res)
+                #---------------------------
+                # Verifica si el nuevo nodo 
+                # es un nodo de salto
+                if isinstance(node, GotoNode):
+                    logging.info(f"-> node de salto: {node.text}")
+                    performative = node.text.replace("Salta a:", "").strip()
+                    node = self.__dfa[performative]
+                    logging.info(f"-> Salto: {node.text}, performativa: {node.performative}")
+                #---------------------------
+                # Actualiza la memoria de 
+                # trabajo
                 if team_source:
                     self.__work_memory.append({"role": "user", "content": res})
                 else:
                     self.__work_memory.append({"role": "user", "content": query})
                     self.__work_memory.append({"role": "user", "content": res})
-                # Efectua inferencia  
+                #---------------------------
+                # Efectua inferencia
                 new_owner, new_dialog_state, res, team = self.do_transition(owner, node, query)
                 res = self.get_text(res)
                 return new_owner, new_dialog_state, res, team
