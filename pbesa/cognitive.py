@@ -740,6 +740,8 @@ class Dialog(ABC):
                     select_node = children[0]
                 else:
                     logging.info("???> Es un nodo terminal o iniciador")
+                    logging.warning(f"???> Es un nodo terminal o iniciador: {node.text}")
+                    logging.warning(f"???> Es un nodo terminal o iniciador: {node.performative}")
                     return self.recovery(query)
                 #--------------------------
                 # Verifica si es un nodo
@@ -764,7 +766,20 @@ class Dialog(ABC):
                 # Efectua transicion
                 if select_node:
                     res = select_node.text
-                    node = select_node.children[0]
+                    if select_node.children and len(select_node.children) > 0:
+                        res = select_node.children[0].text
+                        node = select_node.children[0]
+                    else:
+                        logging.info(f"-> El nodo de transición es terminal: {select_node.text}")
+                        res = select_node.text
+                        node = select_node
+                else:
+                    logging.info(f"-> !!!!!!!!!!!!!! Concepto no encontrado !!!!!!!!!!!!!!")
+                    if isinstance(node, list) and len(node) > 0:
+                        node = node[0]
+                    else:
+                        logging.info(f"-> !!!!!!!!!!!!!! Concepto no encontrado ????????????????")
+                        return self.recovery(query)
                 logging.info(f"Flujo normal: {res}")
                 self.notify(res)
                 #---------------------------
@@ -780,9 +795,12 @@ class Dialog(ABC):
                 # trabajo
                 if team_source:
                     self.__work_memory.append({"role": "user", "content": res})
+                    logging.info(f"-> Actualiza WM: {res}")
                 else:
                     self.__work_memory.append({"role": "user", "content": query})
                     self.__work_memory.append({"role": "user", "content": res})
+                    logging.info(f"-> Actualiza q-WM: {query}")
+                    logging.info(f"-> Actualiza r-WM: {res}")
                 #---------------------------
                 # Efectua inferencia
                 new_owner, new_dialog_state, res, team = self.do_transition(owner, node, query)
