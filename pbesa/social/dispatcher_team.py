@@ -116,17 +116,18 @@ class ResponseAction(Action):
         logging.info(f"[ResponseAction][{self.agent.id}]: Response: {data}")
         if data['source'] in self.agent.get_request_dict():
             request = self.agent.get_request_dict()[data['source']]
+        
+            if 'timeout' in data:
+                logging.info(f"[ResponseAction][{self.agent.id}]: Timeout ******************")
+                request['gateway'].put("TIMEOUT")
+            else:
+                request['dtoList'].append(data['result'])
+                if len(request['dtoList']) >= self.agent.get_buffer_size():
+                    self.send_response(request)
+                    self.adm.send_event(data['source'], 'timeout', {'command': 'stop'})
         else:
-            logging.error(f"[ResponseAction][{self.agent.id}]: Error ******************")
-            request['gateway'].put("ERROR")
-        if 'timeout' in data:
-            logging.info(f"[ResponseAction][{self.agent.id}]: Timeout ******************")
-            request['gateway'].put("TIMEOUT")
-        else:
-            request['dtoList'].append(data['result'])
-            if len(request['dtoList']) >= self.agent.get_buffer_size():
-                self.send_response(request)
-                self.adm.send_event(data['source'], 'timeout', {'command': 'stop'})
+            logging.warning(f"[ResponseAction][{self.agent.id}]: Warning ******************")
+            logging.warning(f"[ResponseAction][{self.agent.id}]: {data}")
 
 # --------------------------------------------------------
 # Define component

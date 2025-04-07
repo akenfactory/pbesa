@@ -482,7 +482,7 @@ class Dialog(ABC):
             "counter": 0
         }
         # Define recovery message
-        self.RECOVERY_MSG = "Lo lamento, puedes darme más detalles o reformular"
+        self.RECOVERY_MSG = "Lo lamento, puedes darme más detalles o reformular. O puedes recibir asistencia humana vía correo electrónico al atencion@minjsuticia.com.co o al Whatsapp 321456987."
         # Define vertices list
         self.__vertices = []
         # Define visited nodes
@@ -587,6 +587,9 @@ class Dialog(ABC):
             "performative": DialogState.START,
             "counter": 0
         }
+        # Reset visited nodes
+        self.__visited_nodes = 0
+        self.__vertices = []
 
     def notify(self, text):
         try:
@@ -699,7 +702,7 @@ class Dialog(ABC):
             }
             logging.info(f"Recovery attemps: {self.__recovery["counter"]}")
             # Verifica si se ha alcanzado el límite de recuperación
-            if self.__recovery['counter'] <= 3 and self.__visited_nodes < 5:
+            if self.__recovery['counter'] <= 3 and self.__visited_nodes <= 3:
                 self.notify("identificando concepto...")
                 #--------------------------
                 # Verifica que exista la performativa
@@ -957,8 +960,10 @@ class Dialog(ABC):
                 self.notify(f"finalizando díalogo de inferencia")
                 logging.info(f"Tipe node: {type(node)}")
                 logging.info(f"$$$> new_owner: {owner} new_dialog_state: {new_dialog_state}")
+                #logging.info(f"------------RESET---------------")
+                #self.reset()      
                 self.notify("STOP")
-                return owner, new_dialog_state, res, owner
+                return "Web", DialogState.START, res, "Web"
             logging.info("END: do_transition")
         except Exception as e:
             traceback.print_exc()
