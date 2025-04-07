@@ -17,6 +17,7 @@ import uuid
 import json
 import logging
 import traceback
+from .mas import Adm
 from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
@@ -611,6 +612,14 @@ class Dialog(ABC):
             canales = self.state['canales']
             canal = canales.get(team)
             if session_flag:
+                # Actualiza la sesion
+                session_manager = self.state['session_manager']
+                session_manager.update_session(self.state['session_id'], {
+                    'team': team,
+                    'owner': team,
+                    'performative': DialogState.START,
+                })
+                # Construye el mensaje
                 dto = {
                     "data": {
                         'text': data,
@@ -798,9 +807,9 @@ class Dialog(ABC):
                     logging.info(f"-> Actualiza WM: {res}")
                 else:
                     self.__work_memory.append({"role": "user", "content": query})
-                    self.__work_memory.append({"role": "user", "content": res})
+                    #self.__work_memory.append({"role": "user", "content": res})
                     logging.info(f"-> Actualiza q-WM: {query}")
-                    logging.info(f"-> Actualiza r-WM: {res}")
+                    #logging.info(f"-> Actualiza r-WM: {res}")
                 #---------------------------
                 # Efectua inferencia
                 new_owner, new_dialog_state, res, team = self.do_transition(owner, node, query)
@@ -857,16 +866,22 @@ class Dialog(ABC):
                     if node.is_terminal:
                         logging.info(f"-> node team -> es terminal -> {node.text}")
                         self.__work_memory.append({"role": "user", "content": node.text})
-                        logging.info("-----")
-                        logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
-                        logging.info("-----")
-                        res = self.__ai_service.generate(self.__work_memory)
-                        res = self.get_text(res)
-                        self.__work_memory.append({"role": "system", "content": res})
-                        # Check if res is empty
-                        if not res or res == "":
-                            self.notify(f"no pude contactar al agente: {node.team}")
-                            return self.recovery(query)                    
+                        
+                        res = query
+                        if "consulta" in node.text.lower():
+                            logging.info(f"-> node team -> consulta: {query}")
+                        else:
+                            logging.info("-----")
+                            logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
+                            logging.info("-----")
+                            res = self.__ai_service.generate(self.__work_memory)
+                            res = self.get_text(res)
+                            self.__work_memory.append({"role": "system", "content": res})
+                            # Check if res is empty
+                            if not res or res == "":
+                                self.notify(f"no pude contactar al agente: {node.team}")
+                                return self.recovery(query)
+                                
                         self.notify(f"le envio al agente {node.team}: {res}")
                         logging.info(f"-> node team -> envia: {res}")
                         res = self.team_inquiry(node.team, res, None, True)
@@ -878,11 +893,27 @@ class Dialog(ABC):
                         else:
                             return self.recovery(query)
                     else:
+
                         logging.info("-> node team -> continua")
-                        self.__work_memory.append({"role": "user", "content": node.text})
-                        logging.info(f"-> node team -> envia: {query}")
-                        res = self.team_inquiry(node.team, query, node.tool, False)
+                        self.__work_memory.append({"role": "user", "content": node.text})   
+                        res = query
+                        if "consulta" in node.text.lower():
+                            logging.info(f"-> node team -> consulta: {query}")
+                        else:
+                            logging.info(f"-> node team -> sentencia: {node.text}")
+                            logging.info("-----")
+                            logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
+                            logging.info("-----")
+                            res = self.get_text(res)
+                            self.__work_memory.append({"role": "system", "content": res})
+                            # Check if res is empty
+                            if not res or res == "":
+                                self.notify(f"no pude contactar al agente: {node.team}")
+                                return self.recovery(query)                    
+                        self.notify(f"le envio al agente {node.team}: {res}")
+                        res = self.team_inquiry(node.team, res, node.tool, False)
                         self.notify(f"continuando con díalogo")
+
                 # Adiciona el texto al work memory
                 if res and not res == "ERROR" and not res == "":
                     logging.info(f"-> Adicion WM node team -> text: {res}")
@@ -942,3 +973,80 @@ class Dialog(ABC):
         :return: str
         """
         self.knowledge = knowledge
+
+# --------------------------------------------------------
+# Define Special Dispatch
+# --------------------------------------------------------
+
+class SpecialDispatch():
+    """ Special dispatch """
+
+    def __init__(self) -> None:
+        """ Constructor method """
+        self.model:any = None
+        self.model_conf:dict = None
+        self.__meta_work_memory:list = []
+        # Define AI service
+        self.__ai_service = None
+        self.knowledge = None
+        # Define options dictionary
+        self.__options_dict = {}
+        # Reference of ADM
+        self.adm = Adm()
+
+    def load_model(self, provider, config, ai_service=None) -> None:
+        self.__service_provider, service = define_service_provider(provider, ai_service)
+        service.setup(config)
+        self.__ai_service = service
+        # Setup options dictionary
+        agent_list = self.get_agent_list()
+        # Get the agent asocciated with the data.
+        for agent_id in agent_list:
+            agent = self.adm.get_agent(agent_id)
+            # Check if the agent is instance of Dialog
+            if isinstance(agent, Dialog):
+                # Get the role
+                role = agent.get_role()
+                self.__options_dict[agent_id] = role.description
+    
+    def get_text(self, mensaje) -> str:
+        if mensaje:
+            mensaje_limpio = mensaje.replace("<|im_start|>user<|im_sep|>", "").replace("<|im_start|>system<|im_sep|>", "") \
+                .replace("<|im_start|>", "").replace("<|im_sep|>", "").replace("<|im_end|>", "") \
+                .replace("[Usuario]: ", "").replace("[Sistema]: ", "") \
+                .replace("<|user|>", "").replace("<|system|>", "")
+            return mensaje_limpio.strip()
+        else:
+            return ""
+
+    def special_dispatch(self, data: any) -> None:
+        """ 
+        Response.
+        @param data Event data 
+        """
+        logging.info("Despachando por descripcion...")
+        options = ""
+        cont = 1
+        agent_options = {}
+        for agent, item in self.__options_dict.items():
+            agent_options[cont] = agent
+            options += f"{cont}) {item}\n"
+            cont += 1
+        query = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
+        prompt = CLASSIFICATION_PROMPT % (query, options)
+        logging.info(f"Query: {query},\n Options:\n{options}")
+        self.__meta_work_memory.append({"role": "user", "content": prompt})
+        res = self.__ai_service.generate(self.__meta_work_memory)
+        logging.info(f"Thought: {res}")
+        self.__meta_work_memory = []
+        res = self.get_text(res)
+        select_agent = None
+        for option in range(1, cont+1):
+            if str(option) in res:
+                select_agent = agent_options[option]
+                logging.info(f"Descripcion del agente seleccionado: {select_agent}")
+                break
+        if not select_agent:
+            logging.info("=> No se seleccionó ningun agente")
+        return select_agent
+ 

@@ -113,7 +113,12 @@ class ResponseAction(Action):
         """ Execute
         @param data: Data
         """
-        request = self.agent.get_request_dict()[data['source']]
+        logging.info(f"[ResponseAction][{self.agent.id}]: Response: {data}")
+        if data['source'] in self.agent.get_request_dict():
+            request = self.agent.get_request_dict()[data['source']]
+        else:
+            logging.error(f"[ResponseAction][{self.agent.id}]: Error ******************")
+            request['gateway'].put("ERROR")
         if 'timeout' in data:
             logging.info(f"[ResponseAction][{self.agent.id}]: Timeout ******************")
             request['gateway'].put("TIMEOUT")
