@@ -62,3 +62,29 @@ Texto: "%s"
 
 Respuesta:
 """
+
+ADAPT_PROMPT = """
+Instrucciones:
+
+Eres un un asistente experto en comunicación. Recibirás un texto original y un perfil de adaptación. Tu tarea es reescribir el texto para que se alinee completamente con el estilo, tono y objetivo comunicativo del perfil.
+
+Requisitos:
+
+- No incluyas explicaciones, razonamientos ni texto adicional.
+
+Ejemplo:
+
+Texto: "Para solicitar el certificado, debe ingresar al sitio web, crear una cuenta, llenar el formulario y esperar el correo de confirmación."
+
+Perfil de adaptación: "Usaurio Autonomo - Proporcionar respuestas directas y concisas para realizar trámites rápidamente."
+
+Respuesta: Ingrese al sitio, cree su cuenta, complete el formulario y revise su correo.
+
+Ahora, evalúa el siguiente caso:
+
+Texto: "%s"
+
+Perfil de adaptación: "%s"
+
+Respuesta:
+"""

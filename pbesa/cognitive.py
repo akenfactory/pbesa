@@ -25,7 +25,7 @@ from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
 from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
     ActionNode, DeclarativeNode, GotoNode) #, TerminalNode
-from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT
+from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT
 # --------------------------------------------------------
 # Define DTOs
 # --------------------------------------------------------
@@ -978,6 +978,37 @@ class Dialog(ABC):
         :return: str
         """
         self.knowledge = knowledge
+
+    def adapt(self, data, profile) -> any:
+        """ Adapt method
+        :param data: data
+        :return: str
+        """
+        try:
+            logging.info(f"Adaptando respuesta: {data}")
+            # Get text
+            text = ""
+            if isinstance(data, str):
+                text = data
+            elif isinstance(data, dict):
+                text = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
+            else:
+                raise ValueError("Respuesta mal formada")
+            # Adapt the data
+            tmp_work_memory = []
+            prompt  = ADAPT_PROMPT % (text, profile)
+            tmp_work_memory.append({"role": "user", "content": prompt})
+            res = self.__ai_service.generate(tmp_work_memory)
+            res = self.get_text(res)
+            logging.info(f"Respuesta adaptada: {res}")
+            if not res or res == "":
+                res = text
+                logging.warning(f"No se pudo adaptar la respuesta.")
+            return res
+        except Exception as e:
+            logging.error(f"Error al adaptar el dato: {data}")
+            logging.error(e)
+            return None
 
 # --------------------------------------------------------
 # Define Special Dispatch
