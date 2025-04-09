@@ -21,6 +21,7 @@ from .mas import Adm
 from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
+from .celulas import celula_casos, celula_consultas, celula_saludos
 from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
 from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
@@ -702,59 +703,122 @@ class Dialog(ABC):
             }
             logging.info(f"Recovery attemps: {self.__recovery["counter"]}")
             # Verifica si se ha alcanzado el límite de recuperación
-            if self.__recovery['counter'] <= 3 and self.__visited_nodes <= 3:
-                self.notify("identificando concepto...")
-                #--------------------------
-                # Verifica que exista la performativa
-                if not dialog_state in self.__dfa:
-                    self.notify("concepto no encontrado")
-                    return self.recovery(query)
-                # Performativa encontrada
-                children = None
-                self.notify("concepto encontrado")
-                #--------------------------
-                # Obtiene los hijos del nodo
-                node = self.__dfa[dialog_state]
-                if not isinstance(node, list):
-                    children = node.children
-                else:
-                    # Es una lista de nodos
-                    children = node
-                #--------------------------
-                # Flujo de selección
+            if self.__recovery['counter'] <= 3 and self.__visited_nodes <= 3:                    
                 select_node = None
-                self.notify("flujo de seleccion...")
-                if children and len(children)> 1:
-                    logging.info(f"--> Más de una opción.")
-                    options = ""
-                    cont = 1
-                    for item in children:
-                        options += f"{cont}) {item.text}\n"
-                        cont += 1
-                    prompt = CLASSIFICATION_PROMPT % (query, options)
-                    logging.info(f"Query: {query},\n Options:\n{options}")
-                    self.__meta_work_memory.append({"role": "user", "content": prompt})
-                    res = self.__ai_service.generate(self.__meta_work_memory)
-                    logging.info(f"Thought: {res}")
-                    self.__meta_work_memory = []
-                    res = self.get_text(res)
-                    for option in range(1, cont):
-                        if str(option) in res:
-                            select_node = children[option-1]
-                            logging.info(f"Select node: {select_node.text}")
-                            break
-                    if not select_node:
-                        logging.info("=> No se seleccionó ninguna opción")
+                #------------------------------
+                # Flujode de excepcion
+                #------------------------------
+                if owner == "Web" and dialog_state == DialogState.START:
+                    logging.info(f"TOPTQ: {owner} - {dialog_state} - {team_source} - {query}")
+                    logging.info(f"------------Flujo de excepcion---------------")
+                    self.notify("identificando intencion...")
+                    # Obtiene discriminadores
+                    caso = celula_casos.derive(self.__ai_service, query)
+                    consulta = celula_consultas.derive(self.__ai_service, query)
+                    saludo = celula_saludos.derive(self.__ai_service, query)
+                    # Verifica si es un saludo
+                    es_saludo = saludo == "SALUDO" and consulta == "NO_PREGUNTA" and caso == "NO_QUEJA_DEMANDA"
+                    es_consulta = consulta == "PREGUNTA_O_SOLICITUD" and caso == "NO_QUEJA_DEMANDA" and saludo == "NO_SALUDO"
+                    es_caso = caso == "QUEJA_DEMANDA" and consulta == "NO_PREGUNTA" and saludo == "NO_SALUDO"
+                    # Verifica los casos
+                    dicriminador = "Ninguno"
+                    if es_saludo or es_consulta or es_caso:
+                        logging.info("Sin ambiguedad")
+                        self.notify("discriminando...")
+                        if es_saludo:
+                            dicriminador = "saluda"
+                        elif es_consulta:
+                            dicriminador = "consulta"
+                        elif es_caso:
+                            dicriminador = "caso"
+                    else:
+                        logging.info("Hay ambiguedad")
+                        self.notify("identificando ambiguedad...")
+                        if saludo == "SALUDO":
+                            dicriminador = "saluda"
+                        else:
+                            dicriminador = "consulta"
+                    #--------------------------
+                    # Obtiene los hijos del 
+                    # nodo
+                    children = None
+                    node = self.__dfa[dialog_state]
+                    if not isinstance(node, list):
+                        children = node.children
+                    else:
+                        # Es una lista de nodos
+                        children = node
+                    #--------------------------
+                    # Flujo de selección                
+                    self.notify("flujo de seleccion...")
+                    if children and len(children)> 1:
+                        logging.info(f"--> Más de una opción.")
+                        options = ""
+                        cont = 1
+                        for item in children:
+                            if dicriminador in item.text:
+                                select_node = item
+                                break    
+                else:                    
+                    #------------------------------
+                    # Fulo normal
+                    #------------------------------    
+                    logging.info("Flujo normal")    
+                    self.notify("identificando concepto...")
+                    #----------------------
+                    # Verifica que exista 
+                    # la performativa
+                    if not dialog_state in self.__dfa:
+                        self.notify("concepto no encontrado")
+                        return self.recovery(query)
+                    # Performativa encontrada
+                    children = None
+                    self.notify("concepto encontrado")
+                    #----------------------
+                    # Obtiene los hijos del
+                    #  nodo
+                    node = self.__dfa[dialog_state]
+                    if not isinstance(node, list):
+                        children = node.children
+                    else:
+                        # Es una lista de nodos
+                        children = node
+                    #----------------------
+                    # Flujo de selección
+                    select_node = None
+                    self.notify("flujo de seleccion...")
+                    if children and len(children)> 1:
+                        logging.info(f"--> Más de una opción.")
+                        options = ""
+                        cont = 1
+                        for item in children:
+                            options += f"{cont}) {item.text}\n"
+                            cont += 1
+                        prompt = CLASSIFICATION_PROMPT % (query, options)
+                        logging.info(f"Query: {query},\n Options:\n{options}")
+                        self.__meta_work_memory.append({"role": "user", "content": prompt})
+                        res = self.__ai_service.generate(self.__meta_work_memory)
+                        logging.info(f"Thought: {res}")
+                        self.__meta_work_memory = []
+                        res = self.get_text(res)
+                        for option in range(1, cont):
+                            if str(option) in res:
+                                select_node = children[option-1]
+                                logging.info(f"Select node: {select_node.text}")
+                                break
+                        if not select_node:
+                            logging.info("=> No se seleccionó ninguna opción")
+                            select_node = children[0]
+                            logging.info(f"=> Selecciona el primer nodo: {select_node.text}")               
+                    elif children and len(children) == 1:
+                        logging.info(f"--> Una opción.")
                         select_node = children[0]
-                        logging.info(f"=> Selecciona el primer nodo: {select_node.text}")               
-                elif children and len(children) == 1:
-                    logging.info(f"--> Una opción.")
-                    select_node = children[0]
-                else:
-                    logging.info("???> Es un nodo terminal o iniciador")
-                    logging.warning(f"???> Es un nodo terminal o iniciador: {node.text}")
-                    logging.warning(f"???> Es un nodo terminal o iniciador: {node.performative}")
-                    return self.recovery(query)
+                    else:
+                        logging.info("???> Es un nodo terminal o iniciador")
+                        logging.warning(f"???> Es un nodo terminal o iniciador: {node.text}")
+                        logging.warning(f"???> Es un nodo terminal o iniciador: {node.performative}")
+                        return self.recovery(query)
+
                 #--------------------------
                 # Verifica si es un nodo
                 # que ya fue recorrido

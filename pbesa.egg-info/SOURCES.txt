@@ -70,6 +70,11 @@ pbesa.egg-info/SOURCES.txt
 pbesa.egg-info/dependency_links.txt
 pbesa.egg-info/requires.txt
 pbesa.egg-info/top_level.txt
+pbesa/celulas/__init__.py
+pbesa/celulas/celula_casos.py
+pbesa/celulas/celula_consultas.py
+pbesa/celulas/celula_saludos.py
+pbesa/celulas/web.py
 pbesa/kernel/__init__.py
 pbesa/kernel/adapter.py
 pbesa/kernel/agent.py
