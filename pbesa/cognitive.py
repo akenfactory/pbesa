@@ -717,13 +717,15 @@ class Dialog(ABC):
                     consulta = celula_consultas.derive(self.__ai_service, query)
                     saludo = celula_saludos.derive(self.__ai_service, query)
                     # Verifica si es un saludo
-                    es_saludo = saludo == "SALUDO" and consulta == "NO_PREGUNTA" and caso == "NO_QUEJA_DEMANDA"
-                    es_consulta = consulta == "PREGUNTA_O_SOLICITUD" and caso == "NO_QUEJA_DEMANDA" and saludo == "NO_SALUDO"
-                    es_caso = caso == "QUEJA_DEMANDA" and consulta == "NO_PREGUNTA" and saludo == "NO_SALUDO"
+                    es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso)
+                    es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo)
+                    es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo)
+                    logging.info(f"==> Saludo: {saludo}, Consulta: {consulta}, Caso: {caso}")
+                    logging.info(f"==> Es saludo: {es_saludo}, Es consulta: {es_consulta}, Es caso: {es_caso}")
                     # Verifica los casos
                     dicriminador = "Ninguno"
                     if es_saludo or es_consulta or es_caso:
-                        logging.info("Sin ambiguedad")
+                        logging.info("Respuesta Clara")
                         self.notify("discriminando...")
                         if es_saludo:
                             dicriminador = "saluda"
@@ -732,12 +734,14 @@ class Dialog(ABC):
                         elif es_caso:
                             dicriminador = "caso"
                     else:
-                        logging.info("Hay ambiguedad")
+                        logging.info("Respuesta con ambiguedad")
                         self.notify("identificando ambiguedad...")
-                        if saludo == "SALUDO":
-                            dicriminador = "saluda"
-                        else:
+                        if caso == "QUEJA_DEMANDA":
+                            dicriminador = "caso"
+                        elif consulta == "PREGUNTA_O_SOLICITUD":
                             dicriminador = "consulta"
+                        elif saludo == "SALUDO":
+                            dicriminador = "saluda"
                     #--------------------------
                     # Obtiene los hijos del 
                     # nodo
