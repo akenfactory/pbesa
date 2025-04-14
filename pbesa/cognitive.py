@@ -21,11 +21,12 @@ from .mas import Adm
 from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
-from .celulas import celula_casos, celula_consultas, celula_saludos
 from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
 from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
-    ActionNode, DeclarativeNode, GotoNode) #, TerminalNode
+    ActionNode, DeclarativeNode, GotoNode)
+from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
+                      celula_generar_documento)
 from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT
 # --------------------------------------------------------
 # Define DTOs
@@ -273,6 +274,17 @@ class AugmentedGeneration(ABC):
         # Set up model
         self.setup_world()
 
+    def command_derive(self, command, query) -> str | None:
+        try:
+            if command == "DATA_TYPE":
+                return celula_datos_identificables.derive(self.__ai_service, query)
+            elif command == "GENERATE_DOCUMENT":
+                return celula_generar_documento.derive(self.__ai_service, query["template"], query["text"])
+            return None
+        except Exception as e:
+            traceback.print_exc()
+            return None
+    
     def derive(self, query) -> str:
         """ Generate method
         :return: str
@@ -304,6 +316,12 @@ class AugmentedGeneration(ABC):
         :return: Role
         """
         return self.__role
+    
+    def get_tool_dict(self):
+        """ Get tool dict method
+        :return: dict
+        """
+        return self.__def_tool_dict
     
     @abstractmethod
     def retrieval(self, query) -> str:
@@ -717,9 +735,9 @@ class Dialog(ABC):
                     consulta = celula_consultas.derive(self.__ai_service, query)
                     saludo = celula_saludos.derive(self.__ai_service, query)
                     # Verifica si es un saludo
-                    es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso)
-                    es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo)
-                    es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo)
+                    es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo)
+                    es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and ("NO_PREGUNTA" in consulta)
+                    es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and ("NO_QUEJA_DEMANDA" in caso)
                     logging.info(f"==> Saludo: {saludo}, Consulta: {consulta}, Caso: {caso}")
                     logging.info(f"==> Es saludo: {es_saludo}, Es consulta: {es_consulta}, Es caso: {es_caso}")
                     # Verifica los casos

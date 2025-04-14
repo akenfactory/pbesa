@@ -34,12 +34,17 @@ operate in an agile and effective manner.
 # --------------------------------------------------------
 
 import logging
+import traceback
+import pandas as pd
 from abc import abstractmethod
 from .worker import Task, Worker
 from ..kernel.agent import Queue
 from ..kernel.agent import Agent
 from ..kernel.agent import Action
 from ..kernel.util import generate_short_uuid
+from ..cognitive import Dialog, AugmentedGeneration
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import CountVectorizer
 
 # ----------------------------------------------------------
 # Defines system component exceptions
@@ -51,6 +56,159 @@ class DispatcherException(Exception):
 
 # --------------------------------------------------------
 # Define Delegate Action
+# --------------------------------------------------------
+
+class SelectedDispatcher(Action):
+    """ An action is a response to the occurrence of an event """
+
+    def __init__(self) -> None:
+        """ Constructor """  
+        super().__init__()
+        self.__rewier = {}
+        self.__planilla = {}
+
+    def active_timeout(self, ag, time: int) -> None:
+        """ Active timeout
+        @param time: Time
+        """
+        logging.info(f"[Delegate] Send event timeout {time}")
+        self.adm.send_event(ag, 'timeout', {'time': time, 'command': 'start'})
+
+    def calculate_close(self, description, data: any) -> bool:
+        """ Check close
+        @param data: Data
+        @return: True if the agent is closed, False otherwise
+        """
+        text1 = description
+        text2 = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
+        logging.info(f"Text1: {text1}")
+        logging.info(f"Query: {text2}")
+        documents = [text1, text2]
+        count_vectorizer = CountVectorizer()
+        sparse_matrix = count_vectorizer.fit_transform(documents)
+        doc_term_matrix = sparse_matrix.todense()
+        df = pd.DataFrame(
+            doc_term_matrix,
+            columns=count_vectorizer.get_feature_names_out(),
+            index=[text1, text2],
+        )
+        res = cosine_similarity(df, df)
+        similarity = res[0][1]
+        return similarity
+    
+    def execute(self, data: any) -> None:
+        """ 
+        Response.
+        @param data Event data 
+        """
+        try:
+            logging.info('Assign to agent...')
+            session_id = data['dto']['session']['session_id'] if 'session' in data['dto'] else None
+            agent_list = self.agent.get_agent_list()
+            agent_count = len(agent_list)
+            logging.debug('List of agents: ' + str(agent_list))
+            if session_id in self.__planilla:
+                mayor_ag_id = self.__planilla[session_id]
+                logging.info('The session is already assigned')
+                logging.info(f'The agent {mayor_ag_id} will be assigned')
+                exit = False
+                while not exit:
+                    ag = self.agent.get_free_queue().get()
+                    agent_obj = self.adm.get_agent(ag)
+                    # Get the role
+                    if mayor_ag_id == agent_obj.id:
+                        logging.info(f'The agent {ag} is assigned')
+                        self.agent.get_request_dict()[ag] = {
+                            'gateway': data['gateway'],
+                            'dtoList': []
+                        }
+                        self.adm.send_event(ag, 'task', data['dto'])
+                        self.__rewier[ag] = 0
+                        exit = True
+                    else:
+                        logging.debug('The agent does not match the role')
+                        self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
+                        if ag in self.__rewier:
+                            self.__rewier[ag] = self.__rewier[ag] + 1
+                        else:
+                            self.__rewier[ag] = 0
+                        if self.__rewier[ag] >= agent_count * 3:
+                            data['gateway'].put('ERROR')
+                            logging.error('[Error, toAssign]: The agent is not available')
+            else:
+                mayor_ag = None
+                sore_mayor = 0
+                # Get the agent asocciated with the data.
+                for agent_id in agent_list:
+                    agent = self.adm.get_agent(agent_id)
+                    # Chec if the agent is instance of AugmentedGeneration
+                    if isinstance(agent, Dialog) or isinstance(agent, AugmentedGeneration):
+                        # Get the role
+                        role = agent.get_role()
+                        score = self.calculate_close(role.description, data)
+                        logging.info(f"Score: {score}")
+                        if score > sore_mayor:
+                            sore_mayor = score
+                            mayor_ag = agent
+                    else:
+                        logging.info(f"The {agent_id} is not instance of AugmentedGeneration or Dialog")
+                # Check if the mayor agent is the same as the agent        
+                if sore_mayor > 0.501:
+                    logging.info(f'The agent {mayor_ag.id} will be assigned')
+                    exit = False
+                    while not exit:
+                        ag = self.agent.get_free_queue().get()
+                        agent_obj = self.adm.get_agent(ag)
+                        # Chec if the agent is instance of AugmentedGeneration
+                        if isinstance(agent_obj, Dialog):
+                            # Get the role
+                            if mayor_ag.id == agent_obj.id:
+                                logging.info(f'The agent {ag} is assigned')
+                                self.agent.get_request_dict()[ag] = {
+                                    'gateway': data['gateway'],
+                                    'dtoList': []
+                                }
+                                self.adm.send_event(ag, 'task', data['dto'])
+                                self.__rewier[ag] = 0
+                                exit = True
+                                self.__planilla[session_id] = mayor_ag.id
+                            else:
+                                logging.debug('The agent does not match the role')
+                                self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
+                                if ag in self.__rewier:
+                                    self.__rewier[ag] = self.__rewier[ag] + 1
+                                else:
+                                    self.__rewier[ag] = 0
+                                if self.__rewier[ag] >= agent_count * 3:
+                                    data['gateway'].put('ERROR')
+                                    logging.error('[Error, toAssign]: The agent is not available')
+                        else:
+                            self.agent.get_request_dict()[ag] = {
+                                'gateway': data['gateway'],
+                                'dtoList': []
+                            }
+                            self.adm.send_event(ag, 'task', data['dto'])
+                            exit = True
+                else:
+                    ag = self.agent.get_free_queue().get()
+                    self.agent.get_request_dict()[ag] = {
+                        'gateway': data['gateway'],
+                        'dtoList': []
+                    }
+                    self.adm.send_event(ag, 'task', data['dto'])
+                # Check timeout    
+                if 'timeout' in self.agent.state:
+                    self.active_timeout(ag, self.agent.state['timeout'])
+                else:
+                    data['gateway'].put('ERROR')
+                    logging.error('[Delegate]: Timeout not defined in the state as "timeout" key')
+        except Exception as e:
+            traceback.print_exc()
+            logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
+            data['gateway'].put('ERROR')
+
+# --------------------------------------------------------
+# Define Delegate Action by default
 # --------------------------------------------------------
 
 class Delegate(Action):
