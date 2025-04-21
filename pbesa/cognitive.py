@@ -719,7 +719,7 @@ class Dialog(ABC):
                 "performative": dialog_state,
                 "counter": counter
             }
-            logging.info(f"Recovery attemps: {self.__recovery["counter"]}")
+            logging.info(f"Recovery attemps: {self.__recovery['counter']}")
             # Verifica si se ha alcanzado el límite de recuperación
             if self.__recovery['counter'] <= 3 and self.__visited_nodes <= 3:                    
                 select_node = None
