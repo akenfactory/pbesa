@@ -58,6 +58,14 @@ class DispatcherException(Exception):
 # Define Delegate Action
 # --------------------------------------------------------
 
+class AgentDto():
+    """ Data Transfer Object """
+    def __init__(self, agent_id:str) -> None:
+        """ Constructor
+        @param agent_id: Agent ID
+        """
+        self.id = agent_id
+
 class SelectedDispatcher(Action):
     """ An action is a response to the occurrence of an event """
 
@@ -95,6 +103,14 @@ class SelectedDispatcher(Action):
         res = cosine_similarity(df, df)
         similarity = res[0][1]
         return similarity
+
+    @abstractmethod    
+    def manual_selection(self, data: any) -> object:
+        """ Manual selection
+        @param data: Data
+        @return: Tuple with the agent and the score
+        """
+        raise NotImplementedError("The method manual_selection must be implemented in the subclass")
     
     def execute(self, data: any) -> None:
         """ 
@@ -136,31 +152,34 @@ class SelectedDispatcher(Action):
                             data['gateway'].put('ERROR')
                             logging.error('[Error, toAssign]: The agent is not available')
             else:
-                mayor_ag = None
-                sore_mayor = 0
-                # Get the agent asocciated with the data.
-                for agent_id in agent_list:
-                    agent = self.adm.get_agent(agent_id)
-                    # Chec if the agent is instance of AugmentedGeneration
-                    if isinstance(agent, Dialog) or isinstance(agent, AugmentedGeneration):
-                        # Get the role
-                        role = agent.get_role()
-                        score = self.calculate_close(role.description, data)
-                        logging.info(f"Score: {score}")
-                        if score > sore_mayor:
-                            sore_mayor = score
-                            mayor_ag = agent
-                    else:
-                        logging.info(f"The {agent_id} is not instance of AugmentedGeneration or Dialog")
+                score_mayor = 0 
+                mayor_ag = self.manual_selection(data['dto'])
+                if mayor_ag:
+                    score_mayor = 7
+                else:
+                    # Get the agent asocciated with the data.
+                    for agent_id in agent_list:
+                        agent = self.adm.get_agent(agent_id)
+                        # Chec if the agent is instance of AugmentedGeneration
+                        if isinstance(agent, Dialog) or isinstance(agent, AugmentedGeneration):
+                            # Get the role
+                            role = agent.get_role()
+                            score = self.calculate_close(role.description, data)
+                            logging.info(f"Score: {score}")
+                            if score > score_mayor:
+                                score_mayor = score
+                                mayor_ag = agent
+                        else:
+                            logging.info(f"The {agent_id} is not instance of AugmentedGeneration or Dialog")
                 # Check if the mayor agent is the same as the agent        
-                if sore_mayor > 0.501:
+                if score_mayor > 0.501:
                     logging.info(f'The agent {mayor_ag.id} will be assigned')
                     exit = False
                     while not exit:
                         ag = self.agent.get_free_queue().get()
                         agent_obj = self.adm.get_agent(ag)
                         # Chec if the agent is instance of AugmentedGeneration
-                        if isinstance(agent_obj, Dialog):
+                        if isinstance(agent_obj, Dialog) or isinstance(agent_obj, AugmentedGeneration):
                             # Get the role
                             if mayor_ag.id == agent_obj.id:
                                 logging.info(f'The agent {ag} is assigned')

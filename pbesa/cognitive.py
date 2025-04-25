@@ -37,6 +37,7 @@ class InteraccionDTO(BaseModel):
     tipo: str
     texto: str
     actor: str
+    isExpanded: Optional[bool] = None
     equipo: Optional[str] = None
     herramienta: Optional[str] = None
     interacciones: List["InteraccionDTO"] = []
@@ -285,6 +286,34 @@ class AugmentedGeneration(ABC):
             traceback.print_exc()
             return None
     
+    def get_text(self, mensaje) -> str:
+        if mensaje:
+            mensaje_limpio = mensaje.replace("<|im_start|>user<|im_sep|>", "").replace("<|im_start|>system<|im_sep|>", "") \
+                .replace("<|im_start|>", "").replace("<|im_sep|>", "").replace("<|im_end|>", "") \
+                .replace("[Usuario]: ", "").replace("[Sistema]: ", "") \
+                .replace("<|user|>", "").replace("<|system|>", "")
+            return mensaje_limpio.strip()
+        else:
+            return ""
+        
+    def custom_derive(self, instructions, prompt) -> str:
+        """ Generate method
+        :return: str
+        """
+        try:
+            instantane_memory = self.__work_memory.copy()
+            instantane_memory.append({"role": "user", "content": instructions})
+            instantane_memory.append({"role": "user", "content": prompt})
+            text = self.__ai_service.generate(instantane_memory)
+            text = self.get_text(text)
+            logging.info(f"Thought: {text}")
+            return text
+        except Exception as e:
+            traceback.print_exc()
+            logging.info(f"------------RESET---------------")
+            self.reset()
+            return "Lo lamento, no puedo responder en este momento"
+        
     def derive(self, query) -> str:
         """ Generate method
         :return: str
@@ -305,10 +334,8 @@ class AugmentedGeneration(ABC):
             return text
         except Exception as e:
             traceback.print_exc()
-
             logging.info(f"------------RESET---------------")
             self.reset()
-
             return "Lo lamento, no puedo responder en este momento"
 
     def get_role(self) -> Role:
@@ -338,6 +365,25 @@ class AugmentedGeneration(ABC):
         """
         pass
 
+# --------------------------------------------------------
+# Define Agent Tool component
+# --------------------------------------------------------
+
+class AgentTool(ABC):
+    """ Agent Tool class """
+
+    def __init__(self, agent) -> None:
+        """ Constructor method """
+        self.agent = agent
+
+    @abstractmethod
+    def tool(self, query: str) -> None:
+        """ Tool method
+        :param query: query
+        :return: None
+        """
+        pass
+    
 # --------------------------------------------------------
 # Define Rational component
 # --------------------------------------------------------
@@ -735,9 +781,9 @@ class Dialog(ABC):
                     consulta = celula_consultas.derive(self.__ai_service, query)
                     saludo = celula_saludos.derive(self.__ai_service, query)
                     # Verifica si es un saludo
-                    es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo)
-                    es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and ("NO_PREGUNTA" in consulta)
-                    es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and ("NO_QUEJA_DEMANDA" in caso)
+                    es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and not ("NO_SALUDO" in saludo)
+                    es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and not ("NO_PREGUNTA" in consulta)
+                    es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and not ("NO_QUEJA_DEMANDA" in caso)
                     logging.info(f"==> Saludo: {saludo}, Consulta: {consulta}, Caso: {caso}")
                     logging.info(f"==> Es saludo: {es_saludo}, Es consulta: {es_consulta}, Es caso: {es_caso}")
                     # Verifica los casos
@@ -902,7 +948,8 @@ class Dialog(ABC):
                 #---------------------------
                 # Efectua inferencia
                 new_owner, new_dialog_state, res, team = self.do_transition(owner, node, query)
-                res = self.get_text(res)
+                if res and not res == "ERROR" and isinstance(res, str):
+                    res = self.get_text(res)
                 return new_owner, new_dialog_state, res, team
             else:
                 logging.info(f"------------RESET---------------")
@@ -931,19 +978,32 @@ class Dialog(ABC):
                 if node.tool and not node.tool == "Ninguno":
                     self.notify("aplicando herramienta...")
                     logging.info(f"-> node tool: {node.tool}")
-                    self.__work_memory.append({"role": "user", "content": node.text})
-                    logging.info("-----")
-                    logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
-                    logging.info("-----")         
-                    res = self.__ai_service.generate(self.__work_memory)
-                    logging.info(f"-> node tool: {res}")
-                    res = self.get_text(res)
+
+                    res = query
+                    if "consulta" in node.text.lower():
+                        logging.info(f"-> node team -> consulta: {query}")
+                    else:
+                        #self.__work_memory.append({"role": "user", "content": node.text})
+                        logging.info("-----")
+                        logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
+                        logging.info("-----")         
+                        res = self.__ai_service.generate(self.__work_memory)
+                        logging.info(f"-> node tool: {res}")
+                        res = self.get_text(res)
                     # Check if res is empty
                     if not res or res == "":
                         self.notify("no pude hacer uso de la herramienta")
                         return self.recovery(query)
                     logging.info(f"-> node tool: envia -> {res}")
-                    res = self.team_inquiry(node.team, res, node.tool, False)   
+                    res = self.team_inquiry(node.team, res, node.tool, False)
+
+                    if res and not res == "ERROR" and not isinstance(res, str):
+                        logging.info(f"COMANDO -> node tool: recibe -> {res}")
+                        self.reset()
+                        self.notify("STOP")
+                        return "Web", DialogState.START, res, "Web"
+
+
                 else:
                     self.notify("realizando llamada...")
                     #------------------------------
@@ -1077,6 +1137,9 @@ class Dialog(ABC):
             if isinstance(data, str):
                 text = data
             elif isinstance(data, dict):
+                if 'command' in data:
+                    logging.info(f"Es un comando.")
+                    return data
                 text = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
             else:
                 raise ValueError("Respuesta mal formada")
