@@ -241,7 +241,8 @@ class AugmentedGeneration(ABC):
         # Define role
         self.__work_memory.append({"role": "user", "content": self.__role.objective})
         self.__work_memory.append({"role": "user", "content": self.__role.arquetype})
-        self.__work_memory.append({"role": "user", "content": self.__role.example})
+        if self.__role.example:
+            self.__work_memory.append({"role": "user", "content": self.__role.example})
     
     def load_metadata(self, agent_metadata:AgentMetadata) -> None:
         """ Load metadata method
@@ -323,14 +324,13 @@ class AugmentedGeneration(ABC):
             prompt = DERIVE_PROMPT % (content, query)
             instantane_memory = self.__work_memory.copy()
             instantane_memory.append({"role": "user", "content": prompt})
+            logging.info("")
+            logging.info("----- MEMORY -----")
+            logging.info("\n%s", json.dumps(instantane_memory, indent=4))
+            logging.info("-------------------")
+            logging.info("")
             text = self.__ai_service.generate(instantane_memory)
-            logging.info(f"Thought: {text}")
-            if self.__def_tool_dict:
-                tool = self.__def_tool_dict.get(self.__role.tool)
-                if tool:
-                    text = tool(text)
-                else:
-                    text = "No se ha encontrado la herramienta"
+            text = self.get_text(text)
             return text
         except Exception as e:
             traceback.print_exc()
