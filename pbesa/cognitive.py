@@ -377,9 +377,9 @@ class AgentTool(ABC):
         self.agent = agent
 
     @abstractmethod
-    def tool(self, query: str) -> None:
+    def tool(self, request: dict) -> None:
         """ Tool method
-        :param query: query
+        :param request: request
         :return: None
         """
         pass
