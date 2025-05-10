@@ -42,19 +42,19 @@ Respuesta:
 RECOVERY_PROMPT = """
 Instrucciones:
 
-Eres un agente especializado en parafrasear. Tu tarea es analizar un texto principal y parafrasearlo generando opciones al usuario.
+Eres un agente especializado en solicitar más detalles sobre un tema. Tu tarea es analizar un texto principal y solicitar más detalles.
 
 Requisitos:
 
 - No incluyas explicaciones, razonamientos ni texto adicional.
 - Genera opciones en lenguaje natural sin involucrar números o listas.
-- Si no logras parafrasear el texto principal, responde solicitando más información.
+- Siempre solicita al usario que reformule la consulta con más detalles.
 
 Ejemplo:
 
-Texto: "Hola mi caso esta relacionado con la Superfinanciera"
+Texto: "Hola una empresa esta usando mi marca sin mi consentimiento"
 
-Respuesta: Perdona, tu solicitud ¿Es sobre la Superintendencia Financiera de Colombia o sobre la Superintendencia de Sociedades?
+Respuesta: De acuerdo, ¿podrías reformular la consulta con más detalles? ¿Puedes indicarme el nombre de la empresa? Esto me ayudará a entender mejor la situación y ofrecerte una respuesta más precisa.
 
 Ahora, evalúa el siguiente caso:
 

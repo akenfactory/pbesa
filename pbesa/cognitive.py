@@ -536,7 +536,7 @@ class Dialog(ABC):
         self.__ai_service = None
         # Define deep
         self.__deep_count = 0
-        self.__deep_limit = 3
+        self.__deep_limit = 9
         # Define knowledge
         self.knowledge = None
         # Define point recovery
@@ -767,7 +767,7 @@ class Dialog(ABC):
             }
             logging.info(f"Recovery attemps: {self.__recovery['counter']}")
             # Verifica si se ha alcanzado el límite de recuperación
-            if self.__recovery['counter'] <= 3 and self.__visited_nodes <= 3:                    
+            if self.__recovery['counter'] <= 33 and self.__visited_nodes <= 33:                    
                 select_node = None
                 #------------------------------
                 # Flujode de excepcion
@@ -1002,8 +1002,6 @@ class Dialog(ABC):
                         self.reset()
                         self.notify("STOP")
                         return "Web", DialogState.START, res, "Web"
-
-
                 else:
                     self.notify("realizando llamada...")
                     #------------------------------
@@ -1030,7 +1028,6 @@ class Dialog(ABC):
                             if not res or res == "":
                                 self.notify(f"no pude contactar al agente: {node.team}")
                                 return self.recovery(query)
-                                
                         self.notify(f"le envio al agente {node.team}: {res}")
                         logging.info(f"-> node team -> envia: {res}")
                         res = self.team_inquiry(node.team, res, None, True)
