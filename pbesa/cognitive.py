@@ -12,7 +12,7 @@
 # --------------------------------------------------------
 # Define resources
 # --------------------------------------------------------
-
+import re
 import uuid
 import json
 import logging
@@ -21,13 +21,14 @@ from .mas import Adm
 from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
-from pbesa.models import AIFoundry, AzureInference, GPTService, ServiceProvider
+from pbesa.models import AIFoundry, AzureInference, AzureOpenAIInference, GPTService, ServiceProvider
 from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
                       celula_generar_documento)
 from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT
+
 # --------------------------------------------------------
 # Define DTOs
 # --------------------------------------------------------
@@ -123,6 +124,9 @@ def define_service_provider(provider, ai_service=None) -> None:
             service_provider.register("CUSTOM_ML", service)
         elif "AZURE_INFERENCE" in provider:
             service = AzureInference()
+            service_provider.register("AZURE_INFERENCE", service)
+        elif "AZURE_OPEN_AI_INFERENCE" in provider:
+            service = AzureOpenAIInference()
             service_provider.register("AZURE_INFERENCE", service)
         return service_provider, service
 
@@ -740,7 +744,7 @@ class Dialog(ABC):
         try:
             prompt = RECOVERY_PROMPT % query
             temp_work_memory = [{"role": "user", "content": prompt}]
-            res = self.__ai_service.generate(temp_work_memory)
+            res = self.__ai_service.generate(temp_work_memory, max_tokens=500)
             res = self.get_text(res)
             if res and not res == "":
                 return self.__recovery['owner'], self.__recovery['performative'], res, self.__recovery['team']
@@ -777,14 +781,16 @@ class Dialog(ABC):
                     logging.info(f"------------Flujo de excepcion---------------")
                     self.notify("identificando intencion...")
                     # Obtiene discriminadores
-                    caso = celula_casos.derive(self.__ai_service, query)
-                    consulta = celula_consultas.derive(self.__ai_service, query)
-                    saludo = celula_saludos.derive(self.__ai_service, query)
+                    caso = celula_casos.derive(self.__ai_service, query, max_tkns=10)
+                    consulta = celula_consultas.derive(self.__ai_service, query, max_tkns=10)
+                    saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)
                     # Verifica si es un saludo
                     es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and not ("NO_SALUDO" in saludo)
                     es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and not ("NO_PREGUNTA" in consulta)
                     es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and not ("NO_QUEJA_DEMANDA" in caso)
-                    logging.info(f"==> Saludo: {saludo}, Consulta: {consulta}, Caso: {caso}")
+
+                    print("\n--- Clase ---")
+                    logging.info(f"==> Saludo: {saludo}, Consulta: {consulta}, Caso: {caso}")                    
                     logging.info(f"==> Es saludo: {es_saludo}, Es consulta: {es_consulta}, Es caso: {es_caso}")
                     # Verifica los casos
                     dicriminador = "Ninguno"
@@ -806,6 +812,10 @@ class Dialog(ABC):
                             dicriminador = "consulta"
                         elif saludo == "SALUDO":
                             dicriminador = "saluda"
+                    logging.info(f"==> Discriminador: {dicriminador}")
+                    if dicriminador == "Ninguno":
+                        dicriminador = "consulta"
+                    print("---------------------\n")
                     #--------------------------
                     # Obtiene los hijos del 
                     # nodo
@@ -865,7 +875,7 @@ class Dialog(ABC):
                         prompt = CLASSIFICATION_PROMPT % (query, options)
                         logging.info(f"Query: {query},\n Options:\n{options}")
                         self.__meta_work_memory.append({"role": "user", "content": prompt})
-                        res = self.__ai_service.generate(self.__meta_work_memory)
+                        res = self.__ai_service.generate(self.__meta_work_memory, max_tokens=10)
                         logging.info(f"Thought: {res}")
                         self.__meta_work_memory = []
                         res = self.get_text(res)
@@ -886,6 +896,14 @@ class Dialog(ABC):
                         logging.warning(f"???> Es un nodo terminal o iniciador: {node.text}")
                         logging.warning(f"???> Es un nodo terminal o iniciador: {node.performative}")
                         return self.recovery(query)
+                
+                # Verifica si el nodo fue seleccionado
+                if not select_node:
+                    logging.warning(f"???> No se seleccionó ningún nodo")
+                    logging.info(f"------------RESET---------------")
+                    self.notify("STOP")
+                    self.reset()
+                    return "Web", DialogState.START, self.RECOVERY_MSG, "Web"
 
                 #--------------------------
                 # Verifica si es un nodo
@@ -987,7 +1005,7 @@ class Dialog(ABC):
                         logging.info("-----")
                         logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                         logging.info("-----")         
-                        res = self.__ai_service.generate(self.__work_memory)
+                        res = self.__ai_service.generate(self.__work_memory, max_tokens=100)
                         logging.info(f"-> node tool: {res}")
                         res = self.get_text(res)
                     # Check if res is empty
@@ -1021,7 +1039,7 @@ class Dialog(ABC):
                             logging.info("-----")
                             logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                             logging.info("-----")
-                            res = self.__ai_service.generate(self.__work_memory)
+                            res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
                             res = self.get_text(res)
                             self.__work_memory.append({"role": "system", "content": res})
                             # Check if res is empty
@@ -1088,7 +1106,7 @@ class Dialog(ABC):
                 logging.info("-----")
                 logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                 logging.info("-----")
-                res = self.__ai_service.generate(self.__work_memory)
+                res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
                 res = self.get_text(res)
                 self.__work_memory.append({"role": "system", "content": res})
                 # Check if res is empty
@@ -1218,13 +1236,19 @@ class SpecialDispatch():
         prompt = CLASSIFICATION_PROMPT % (query, options)
         logging.info(f"Query: {query},\n Options:\n{options}")
         self.__meta_work_memory.append({"role": "user", "content": prompt})
-        res = self.__ai_service.generate(self.__meta_work_memory)
+        res = self.__ai_service.generate(self.__meta_work_memory, max_tokens=10)
         logging.info(f"Thought: {res}")
         self.__meta_work_memory = []
         res = self.get_text(res)
         select_agent = None
+        compare = re.findall(r'\d+', res)
+        if len(compare) > 0:
+            compare = compare[0]
+        else:
+            compare = res
+        compare = compare.strip()
         for option in range(1, cont+1):
-            if str(option) in res:
+            if str(option) == compare:
                 select_agent = agent_options[option]
                 logging.info(f"Descripcion del agente seleccionado: {select_agent}")
                 break
