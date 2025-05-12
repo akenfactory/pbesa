@@ -98,14 +98,16 @@ class Task(Action):
         """       
         self.adm.send_event(self.agent.id, 'timeout', {'time': time, 'dto': None})
 
-    def send_response(self, data:any) -> None:
+    def send_response(self, data:any, reset=False, session_id=None) -> None:
         """ Send response
         @param data: Data
         """
         if self.__enable_response:
             response = {
                 'source': self.agent.id,
-                'result': data
+                'result': data,
+                'reset': reset,
+                'session_id': session_id
             }
             self.adm.send_event(self.agent.get_controller(), 'response', response) 
         else:

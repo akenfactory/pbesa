@@ -711,7 +711,9 @@ class Dialog(ABC):
                     dto = {
                         "data": {
                             'text': data,
-                            'operation': operation
+                            'operation': operation,
+                            'id_conversacion': self.state['id_conversacion'],
+                            'session_id': self.state['session_id'],
                         },
                     }
                 else:
@@ -893,8 +895,8 @@ class Dialog(ABC):
                         select_node = children[0]
                     else:
                         logging.info("???> Es un nodo terminal o iniciador")
-                        logging.warning(f"???> Es un nodo terminal o iniciador: {node.text}")
-                        logging.warning(f"???> Es un nodo terminal o iniciador: {node.performative}")
+                        logging.warning(f"???> Es un nodo terminal o iniciador: {node}")
+                        logging.warning(f"???> Es un nodo terminal o iniciador: {node}")
                         return self.recovery(query)
                 
                 # Verifica si el nodo fue seleccionado
@@ -1208,6 +1210,8 @@ class SpecialDispatch():
                 # Get the role
                 role = agent.get_role()
                 self.__options_dict[agent_id] = role.description
+        # Log
+        logging.info(f"Agentes disponibles: {self.__options_dict.keys()}")
     
     def get_text(self, mensaje) -> str:
         if mensaje:
@@ -1242,13 +1246,16 @@ class SpecialDispatch():
         res = self.get_text(res)
         select_agent = None
         compare = re.findall(r'\d+', res)
+        print(f"Compare: {compare}")
         if len(compare) > 0:
             compare = compare[0]
         else:
             compare = res
         compare = compare.strip()
+        print(f"Compare: {compare}")
         for option in range(1, cont+1):
-            if str(option) == compare:
+            print(f"Option: {option} - Compare: {compare}")
+            if str(option) == compare:                
                 select_agent = agent_options[option]
                 logging.info(f"Descripcion del agente seleccionado: {select_agent}")
                 break

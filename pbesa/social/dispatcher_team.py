@@ -73,7 +73,7 @@ class SelectedDispatcher(Action):
         """ Constructor """  
         super().__init__()
         self.__rewier = {}
-        self.__planilla = {}
+        self.planilla = {}
 
     def active_timeout(self, ag, time: int) -> None:
         """ Active timeout
@@ -123,8 +123,8 @@ class SelectedDispatcher(Action):
             agent_list = self.agent.get_agent_list()
             agent_count = len(agent_list)
             logging.debug('List of agents: ' + str(agent_list))
-            if session_id in self.__planilla:
-                mayor_ag_id = self.__planilla[session_id]
+            if session_id in self.planilla:
+                mayor_ag_id = self.planilla[session_id]
                 logging.info('The session is already assigned')
                 logging.info(f'The agent {mayor_ag_id} will be assigned')
                 exit = False
@@ -190,7 +190,7 @@ class SelectedDispatcher(Action):
                                 self.adm.send_event(ag, 'task', data['dto'])
                                 self.__rewier[ag] = 0
                                 exit = True
-                                self.__planilla[session_id] = mayor_ag.id
+                                self.planilla[session_id] = mayor_ag.id
                             else:
                                 logging.debug('The agent does not match the role')
                                 self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
@@ -225,6 +225,9 @@ class SelectedDispatcher(Action):
             traceback.print_exc()
             logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
             data['gateway'].put('ERROR')
+    
+    def get_planilla(self) -> dict:
+        return self.planilla
 
 # --------------------------------------------------------
 # Define Delegate Action by default
@@ -302,6 +305,14 @@ class ResponseAction(Action):
                 if len(request['dtoList']) >= self.agent.get_buffer_size():
                     self.send_response(request)
                     self.adm.send_event(data['source'], 'timeout', {'command': 'stop'})
+                    if data['reset']:
+                        logging.info(f"[ResponseAction][{self.agent.id}]: Reset ******************")
+                        delegate = self.agent.get_delegate()
+                        print(f"Delegate: {delegate}")
+                        planilla = delegate.get_planilla()
+                        print(f"Planilla: {planilla}")
+                        planilla.pop(data['session_id'], None)
+                        logging.info(f"[ResponseAction][{self.agent.id}]: Planilla: actualizada")
         else:
             logging.warning(f"[ResponseAction][{self.agent.id}]: Warning ******************")
             logging.warning(f"[ResponseAction][{self.agent.id}]: {data}")
@@ -326,6 +337,7 @@ class DispatcherController(Agent):
         self.__free_queue = Queue(pool_size)
         self.__agent_list = []
         self.__delegate = delegate
+        self.__delegate_obj = None
         super().__init__(agent_id)
 
     def setup(self) -> None:
@@ -333,7 +345,8 @@ class DispatcherController(Agent):
         self._social = True
         self.add_behavior('Delegate')
         if self.__delegate:
-            self.bind_action('Delegate', 'delegate', self.__delegate())
+            self.__delegate_obj = self.__delegate()
+            self.bind_action('Delegate', 'delegate', self.__delegate_obj)
         else:
             self.bind_action('Delegate', 'delegate', Delegate())
         self.add_behavior('Notify')
@@ -403,6 +416,12 @@ class DispatcherController(Agent):
         @return: Buffer size
         """
         return self.__buffer_size
+    
+    def get_delegate(self) -> Action:
+        """ Gets the delegate
+        @return: Delegate
+        """
+        return self.__delegate_obj
 
     def is_block(self) -> bool:
         """ Checks if the pool is blocking
@@ -498,7 +517,7 @@ class LLMDispatcherDelegate(Action):
         """ Constructor """  
         super().__init__()
         self.__rewier = {}
-        self.__planilla = {}
+        self.planilla = {}
 
     def active_timeout(self, ag, time: int) -> None:
         """ Active timeout
@@ -526,8 +545,8 @@ class LLMDispatcherDelegate(Action):
             agent_list = self.agent.get_agent_list()
             agent_count = len(agent_list)
             logging.debug('List of agents: ' + str(agent_list))
-            if session_id in self.__planilla:
-                mayor_ag_id = self.__planilla[session_id]
+            if session_id in self.planilla:
+                mayor_ag_id = self.planilla[session_id]
                 logging.info('The session is already assigned')
                 logging.info(f'The agent {mayor_ag_id} will be assigned')
                 exit = False
@@ -578,7 +597,7 @@ class LLMDispatcherDelegate(Action):
                                 self.adm.send_event(ag, 'task', data['dto'])
                                 self.__rewier[ag] = 0
                                 exit = True
-                                self.__planilla[session_id] = select_agent
+                                self.planilla[session_id] = select_agent
                             else:
                                 logging.debug('The agent does not match the role')
                                 self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
@@ -613,3 +632,6 @@ class LLMDispatcherDelegate(Action):
             traceback.print_exc()
             logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
             data['gateway'].put('ERROR')
+            
+    def get_planilla(self) -> dict:
+        return self.planilla
