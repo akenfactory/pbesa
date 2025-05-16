@@ -707,7 +707,7 @@ class Dialog(ABC):
                 logging.info(f'>>>> Response: {response}')
                 return response['message']['response']
             else:
-                if operation:
+                if operation and not operation == "Ninguno":
                     dto = {
                         "data": {
                             'text': data,

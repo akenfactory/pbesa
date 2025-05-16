@@ -135,7 +135,7 @@ class AzureInference(AIService):
             credential=AzureKeyCredential(config['AZURE_INFERENCE_SDK_KEY'])
         )
 
-    def generate(self, work_memory) -> str:
+    def generate(self, work_memory, max_tokens=2000, temperature=0, top_p=0.9) -> str:
         response = self.model.complete(
             messages= work_memory,
             model =self.model_conf['DEPLOYMENT_NAME'],
