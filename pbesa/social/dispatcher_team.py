@@ -253,7 +253,9 @@ class Delegate(Action):
             'gateway': data['gateway'],
             'dtoList': []
         }
+        logging.info(f"[Delegate][{self.agent.id}]: Assign to agent {ag}")
         self.adm.send_event(ag, 'task', data['dto'])
+        logging.info(f"[Delegate][{self.agent.id}]: Agent {ag} assigned")
         if 'timeout' in self.agent.state:
             self.active_timeout(ag, self.agent.state['timeout'])
         else:
@@ -293,7 +295,8 @@ class ResponseAction(Action):
         """ Execute
         @param data: Data
         """
-        logging.info(f"[ResponseAction][{self.agent.id}]: Response: {data}")
+        #@TODO: Check if the data is valid
+        #logging.info(f"[ResponseAction][{self.agent.id}]: Obtiene respuesta")
         if data['source'] in self.agent.get_request_dict():
             request = self.agent.get_request_dict()[data['source']]
         

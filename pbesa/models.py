@@ -13,6 +13,8 @@
 # Define resources
 # --------------------------------------------------------
 
+import json
+import logging
 import traceback
 from openai import AzureOpenAI
 from abc import ABC, abstractmethod
@@ -20,7 +22,7 @@ from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
 from azure.ai.inference import ChatCompletionsClient
 from azure.core.credentials import AzureKeyCredential
-
+from azure.core.exceptions import HttpResponseError
 import time
 from openai import AzureOpenAI, RateLimitError, APIStatusError
 from tenacity import (
@@ -136,12 +138,45 @@ class AzureInference(AIService):
         )
 
     def generate(self, work_memory, max_tokens=2000, temperature=0, top_p=0.9) -> str:
-        response = self.model.complete(
-            messages= work_memory,
-            model =self.model_conf['DEPLOYMENT_NAME'],
-            max_tokens=self.model_conf['MAX_TOKENS']
-        )
-        return response.choices[0].message.content
+        try:
+            response = self.model.complete(
+                messages= work_memory,
+                model =self.model_conf['DEPLOYMENT_NAME'],
+                max_tokens=self.model_conf['MAX_TOKENS']
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            # Maneja otros errores
+            trace_err = traceback.format_exc()
+            err = str(e) + " - " + trace_err
+            print(f"Error en la respuesta de Azure: {err}")
+            if self.model_conf['SUBSTITUDE_DEPLOYMENT_NAME'] == "Llama-3.3-70B-Instruct":
+                print("\n\n\n")
+                print("----------------------------------------")
+                print("Entra a jugar el sustituto")
+                try:
+                    logging.info("\n\n\n.............................................")
+                    logging.info("\n%s", json.dumps(work_memory, indent=4))
+                    logging.info("........................................\n\n\n")
+
+                    response = self.model.complete(
+                        messages= work_memory,
+                        model =self.model_conf['SUBSTITUDE_DEPLOYMENT_NAME'],
+                        max_tokens=self.model_conf['MAX_TOKENS']
+                    )
+                    print("----------------------------------------")
+                    print("\n\n\n")
+                    
+                    return response.choices[0].message.content
+                except Exception as e2:
+                    trace_err2 = traceback.format_exc()
+                    err2 = str(e2) + " - " + trace_err2
+                    print(f"Error en la respuesta de Azure: {err2}")
+                    print("----------------------------------------")
+                    print("\n\n\n")
+                    
+                    raise e2
+                    
 
 # Función auxiliar para determinar la espera basada en el error
 def wait_strategy_for_rate_limit(retry_state):

@@ -27,7 +27,7 @@ from pbesa.social.dialog import (
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
                       celula_generar_documento)
-from pbesa.social.prompts import CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT
+from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
 # Define DTOs
@@ -556,6 +556,10 @@ class Dialog(ABC):
         self.__vertices = []
         # Define visited nodes
         self.__visited_nodes = 0
+        # Define alter work memory
+        self.__attemps = 1
+        self.__analazer_work_memory:list = []
+        self.__sintetizer_work_memory:list = []
 
     def setup_world(self):
         """ Set up model method """
@@ -660,11 +664,11 @@ class Dialog(ABC):
         self.__visited_nodes = 0
         self.__vertices = []
 
-    def notify(self, text):
+    def notify(self, session_id, text):
         try:
             canales = self.state['canales']
             canal = canales.get("Webhook")
-            session_id = self.state['session_id']
+            #session_id = self.state['session_id']
             dto = {
                 "session_id": session_id,
                 "text": text[0:100]
@@ -676,9 +680,9 @@ class Dialog(ABC):
                 logging.warning(f"Notificación no enviada: {text}")
         except Exception as e:
             logging.error(f"Error al enviar notificación: {text}")
-            logging.erro(f"Error: {e}")
+            logging.error(f"Error: {e}")
 
-    def team_inquiry(self, team, data, operation, session_flag) -> str:
+    def team_inquiry(self, session, team, data, operation, session_flag) -> str:
         try:
             dto = None
             canales = self.state['canales']
@@ -686,7 +690,7 @@ class Dialog(ABC):
             if session_flag:
                 # Actualiza la sesion
                 session_manager = self.state['session_manager']
-                session_manager.update_session(self.state['session_id'], {
+                session_manager.update_session(session['session_id'], {
                     'team': team,
                     'owner': team,
                     'performative': DialogState.START,
@@ -695,7 +699,7 @@ class Dialog(ABC):
                 dto = {
                     "data": {
                         'text': data,
-                        'session_id': self.state['session_id'],
+                        'session_id': session['session_id'],
                     },
                 }
                 # Evia mensaje a los agentes remotos
@@ -712,8 +716,8 @@ class Dialog(ABC):
                         "data": {
                             'text': data,
                             'operation': operation,
-                            'id_conversacion': self.state['id_conversacion'],
-                            'session_id': self.state['session_id'],
+                            'id_conversacion': session['id_conversacion'],
+                            'session_id': session['session_id'],
                         },
                     }
                 else:
@@ -742,7 +746,7 @@ class Dialog(ABC):
         else:
             return ""
     
-    def recovery(self, query):
+    def recovery(self, session_id, query):
         try:
             prompt = RECOVERY_PROMPT % query
             temp_work_memory = [{"role": "user", "content": prompt}]
@@ -754,12 +758,97 @@ class Dialog(ABC):
                 logging.info(f"------------RESET---------------")
                 logging.info(f"Recovery from: {self.__recovery['performative']}")
                 self.reset()
-                self.notify("STOP") 
+                self.notify(session_id, "STOP") 
                 return "Web", DialogState.START, self.RECOVERY_MSG, "Web"
         except Exception as e:
             return self.RECOVERY_MSG
+        
+    def stage_one_classification(self, session_id, messages, attemps, query):
+        """ Stage one classification """
+        res = ""
+        #evaluating = True
+        dicriminador = None
+        logging.info(f"------------Flujo de excepcion---------------")
+        self.notify(session_id, "identificando intención...")        
 
-    def transition(self, owner, dialog_state, query, team_source=False) -> str:
+        logging.info(f"Intento: {attemps}") 
+        # Obtiene discriminadores
+        # Verifica si es un saludo
+        if attemps == 1:
+            saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)   
+        else:
+            saludo = "NO_SALUDO"
+        # De la forma user, system y de messages 
+        # genera un texto discriminando los tipos de mensajes
+        history = ""
+        for message in messages:
+            if message['user']:
+                history += f"user: {message['text']}\n"
+            else:
+                history += f"system: {message['text']}\n"
+        # User
+        #history += f"user: {query}\n"
+
+        # Actyaliza la memoria de trabajo
+        prompt = ANALIZER_PROMPT % history
+        self.__analazer_work_memory:list = [{"role": "user", "content": prompt}]
+        if attemps > 1:
+            # Desde la seegunda iteeraccion de la
+            # conversacion, se utiliza el sintentizador
+            prompt = SINTETIZER_PROMPT % history
+            self.__sintetizer_work_memory:list = [{"role": "user", "content": prompt}]
+            logging.info("\n\n\n--------------SINTETIZER------------------")
+            logging.info("\n%s", json.dumps(self.__sintetizer_work_memory, indent=4))
+            logging.info("\n\n\n")
+            query = self.__ai_service.generate(self.__sintetizer_work_memory, max_tokens=10)
+            res = self.get_text(query)
+            query = res
+            logging.info(f"Thought: {query}")
+        # Verifica si es una consulta o un caso
+        caso = celula_casos.derive(self.__ai_service, query, max_tkns=10)
+        consulta = celula_consultas.derive(self.__ai_service, query, max_tkns=10)
+        # Verifica si es un saludo, consulta o caso
+        es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and not ("NO_SALUDO" in saludo)    
+        es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and not ("NO_PREGUNTA" in consulta)
+        es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and not ("NO_QUEJA_DEMANDA" in caso)
+        print("\n------------------- Clase --------------------------")
+        logging.info(f"==> Saludo: {saludo}, Consulta: {consulta}, Caso: {caso}")                    
+        logging.info(f"==> Es saludo: {es_saludo}, Es consulta: {es_consulta}, Es caso: {es_caso}")
+        print("\n-----------------------------------------------------")
+        # Verifica los casos
+        if es_saludo or es_consulta or es_caso:
+            logging.info("Respuesta Clara")
+            if es_saludo:
+                dicriminador = "saluda"
+            elif es_consulta:
+                dicriminador = "consulta"
+            else:
+                dicriminador = "caso"
+            #evaluating = False
+            self.notify(session_id, f"fase uno es {dicriminador}...")
+        else:
+            logging.info("Respuesta con ambiguedad")
+            self.notify(session_id, "identificando ambiguedad...")
+            self.__analazer_work_memory.append({"role": "user", "content": query})
+            logging.info("\n\n\n--------------ANALIZER------------------")
+            logging.info("\n%s", json.dumps(self.__analazer_work_memory, indent=4))
+            logging.info("------------------------------------------\n\n\n")
+            res = self.__ai_service.generate(self.__analazer_work_memory, max_tokens=10)
+            logging.info(f"Thought: {res}")
+            self.__analazer_work_memory.append({"role": "system", "content": query})                
+            self.__sintetizer_work_memory.append({"role": "system", "content": query})
+            #if caso == "QUEJA_DEMANDA":
+            #    dicriminador = "caso"
+            #elif consulta == "PREGUNTA_O_SOLICITUD":
+            #    dicriminador = "consulta"
+            #elif saludo == "SALUDO":
+            #    dicriminador = "saluda"
+        #logging.info(f"==> Discriminador: {dicriminador}")
+        #if dicriminador == "Ninguno":
+        #    dicriminador = "consulta"
+        return dicriminador, res
+
+    def transition(self, session, owner, dialog_state, query, team_source=False) -> str:
         try:
             res = ""
             logging.info(f"TOPTQ: {owner} - {dialog_state} - {team_source} - {query}")
@@ -780,44 +869,26 @@ class Dialog(ABC):
                 #------------------------------
                 if owner == "Web" and dialog_state == DialogState.START:
                     logging.info(f"TOPTQ: {owner} - {dialog_state} - {team_source} - {query}")
-                    logging.info(f"------------Flujo de excepcion---------------")
-                    self.notify("identificando intencion...")
-                    # Obtiene discriminadores
-                    caso = celula_casos.derive(self.__ai_service, query, max_tkns=10)
-                    consulta = celula_consultas.derive(self.__ai_service, query, max_tkns=10)
-                    saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)
-                    # Verifica si es un saludo
-                    es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and not ("NO_SALUDO" in saludo)
-                    es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and not ("NO_PREGUNTA" in consulta)
-                    es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and not ("NO_QUEJA_DEMANDA" in caso)
-
-                    print("\n--- Clase ---")
-                    logging.info(f"==> Saludo: {saludo}, Consulta: {consulta}, Caso: {caso}")                    
-                    logging.info(f"==> Es saludo: {es_saludo}, Es consulta: {es_consulta}, Es caso: {es_caso}")
-                    # Verifica los casos
-                    dicriminador = "Ninguno"
-                    if es_saludo or es_consulta or es_caso:
-                        logging.info("Respuesta Clara")
-                        self.notify("discriminando...")
-                        if es_saludo:
-                            dicriminador = "saluda"
-                        elif es_consulta:
-                            dicriminador = "consulta"
-                        elif es_caso:
-                            dicriminador = "caso"
-                    else:
-                        logging.info("Respuesta con ambiguedad")
-                        self.notify("identificando ambiguedad...")
-                        if caso == "QUEJA_DEMANDA":
-                            dicriminador = "caso"
-                        elif consulta == "PREGUNTA_O_SOLICITUD":
-                            dicriminador = "consulta"
-                        elif saludo == "SALUDO":
-                            dicriminador = "saluda"
-                    logging.info(f"==> Discriminador: {dicriminador}")
-                    if dicriminador == "Ninguno":
-                        dicriminador = "consulta"
-                    print("---------------------\n")
+                    session_manager = self.state['session_manager']        
+                    conversation = session_manager.get_conversation(session['id_conversacion'])
+                    attemps = conversation.get('attemps', 1)            
+                    dicriminador, res = self.stage_one_classification(session['session_id'], conversation['messages'], attemps, query)
+                    conversation['attemps'] = attemps + 1
+                    session_manager.update_conversation(session['id_conversacion'], conversation)
+                    logging.info(f"Discriminador: {dicriminador}")
+                    # Limpia la memoria de trabajo
+                    # Para que el agente la utilice en
+                    # Otra conversacion
+                    self.__analazer_work_memory:list = []
+                    self.__sintetizer_work_memory:list = []
+                    if not dicriminador:
+                        # Una nueva iteración de analisis
+                        logging.info(f"------------RESET---------------")
+                        logging.info(f"Recovery from: {self.__recovery['performative']}")
+                        self.reset()
+                        self.notify(session['session_id'], "STOP") 
+                        return "Web", DialogState.START, res, "Web"
+                    query = res                
                     #--------------------------
                     # Obtiene los hijos del 
                     # nodo
@@ -830,7 +901,6 @@ class Dialog(ABC):
                         children = node
                     #--------------------------
                     # Flujo de selección                
-                    self.notify("flujo de seleccion...")
                     if children and len(children)> 1:
                         logging.info(f"--> Más de una opción.")
                         options = ""
@@ -838,22 +908,22 @@ class Dialog(ABC):
                         for item in children:
                             if dicriminador in item.text:
                                 select_node = item
-                                break    
+                                break
                 else:                    
                     #------------------------------
                     # Fulo normal
                     #------------------------------    
                     logging.info("Flujo normal")    
-                    self.notify("identificando concepto...")
+                    self.notify(session['session_id'], "identificando concepto...")
                     #----------------------
                     # Verifica que exista 
                     # la performativa
                     if not dialog_state in self.__dfa:
-                        self.notify("concepto no encontrado")
-                        return self.recovery(query)
+                        self.notify(session['session_id'], "concepto no encontrado")
+                        return self.recovery(session['session_id'], query)
                     # Performativa encontrada
                     children = None
-                    self.notify("concepto encontrado")
+                    self.notify(session['session_id'], "concepto encontrado")
                     #----------------------
                     # Obtiene los hijos del
                     #  nodo
@@ -866,7 +936,6 @@ class Dialog(ABC):
                     #----------------------
                     # Flujo de selección
                     select_node = None
-                    self.notify("flujo de seleccion...")
                     if children and len(children)> 1:
                         logging.info(f"--> Más de una opción.")
                         options = ""
@@ -897,13 +966,13 @@ class Dialog(ABC):
                         logging.info("???> Es un nodo terminal o iniciador")
                         logging.warning(f"???> Es un nodo terminal o iniciador: {node}")
                         logging.warning(f"???> Es un nodo terminal o iniciador: {node}")
-                        return self.recovery(query)
+                        return self.recovery(session['session_id'], query)
                 
                 # Verifica si el nodo fue seleccionado
                 if not select_node:
                     logging.warning(f"???> No se seleccionó ningún nodo")
                     logging.info(f"------------RESET---------------")
-                    self.notify("STOP")
+                    self.notify(session['session_id'], "STOP")
                     self.reset()
                     return "Web", DialogState.START, self.RECOVERY_MSG, "Web"
 
@@ -943,9 +1012,8 @@ class Dialog(ABC):
                         node = node[0]
                     else:
                         logging.info(f"-> !!!!!!!!!!!!!! Concepto no encontrado ????????????????")
-                        return self.recovery(query)
+                        return self.recovery(session['session_id'], query)
                 logging.info(f"Flujo normal: {res}")
-                self.notify(res)
                 #---------------------------
                 # Verifica si el nuevo nodo 
                 # es un nodo de salto
@@ -967,13 +1035,13 @@ class Dialog(ABC):
                     #logging.info(f"-> Actualiza r-WM: {res}")
                 #---------------------------
                 # Efectua inferencia
-                new_owner, new_dialog_state, res, team = self.do_transition(owner, node, query)
+                new_owner, new_dialog_state, res, team = self.do_transition(session, owner, node, query)
                 if res and not res == "ERROR" and isinstance(res, str):
                     res = self.get_text(res)
                 return new_owner, new_dialog_state, res, team
             else:
                 logging.info(f"------------RESET---------------")
-                self.notify("STOP")
+                self.notify(session['session_id'], "STOP")
                 self.reset()
                 return "Web", DialogState.START, self.RECOVERY_MSG, "Web"
             logging.info("END: do_transition")
@@ -981,22 +1049,22 @@ class Dialog(ABC):
             traceback.print_exc()
             logging.info(f"------------RESET---------------")
             self.reset()
-            self.notify("STOP")
+            self.notify(session['session_id'], "STOP")
             return owner, DialogState.START, "Lo lamento, no puedo responder en este momento", owner
 
-    def do_transition(self, owner, node, query) -> str:
+    def do_transition(self, session, owner, node, query) -> str:
         """ Generate method
         :return: str
         """
         try:
             if isinstance(node, ActionNode):
-                self.notify("realizando acción...")
+                self.notify(session['session_id'], "realizando acción...")
                 #------------------------------
                 # Accion
                 #------------------------------
                 logging.info(f"-> node action: {node.action}")
                 if node.tool and not node.tool == "Ninguno":
-                    self.notify("aplicando herramienta...")
+                    self.notify(session['session_id'], "aplicando herramienta...")
                     logging.info(f"-> node tool: {node.tool}")
 
                     res = query
@@ -1012,18 +1080,18 @@ class Dialog(ABC):
                         res = self.get_text(res)
                     # Check if res is empty
                     if not res or res == "":
-                        self.notify("no pude hacer uso de la herramienta")
-                        return self.recovery(query)
+                        self.notify(session['session_id'], "no pude hacer uso de la herramienta")
+                        return self.recovery(session['session_id'], query)
                     logging.info(f"-> node tool: envia -> {res}")
-                    res = self.team_inquiry(node.team, res, node.tool, False)
+                    res = self.team_inquiry(session, node.team, res, node.tool, False)
 
                     if res and not res == "ERROR" and not isinstance(res, str):
                         logging.info(f"COMANDO -> node tool: recibe -> {res}")
                         self.reset()
-                        self.notify("STOP")
+                        self.notify(session['session_id'], "STOP")
                         return "Web", DialogState.START, res, "Web"
                 else:
-                    self.notify("realizando llamada...")
+                    self.notify(session['session_id'], "realizando llamada...")
                     #------------------------------
                     # Lllamada
                     #------------------------------
@@ -1046,18 +1114,16 @@ class Dialog(ABC):
                             self.__work_memory.append({"role": "system", "content": res})
                             # Check if res is empty
                             if not res or res == "":
-                                self.notify(f"no pude contactar al agente: {node.team}")
-                                return self.recovery(query)
-                        self.notify(f"le envio al agente {node.team}: {res}")
+                                return self.recovery(session['session_id'], query)
                         logging.info(f"-> node team -> envia: {res}")
-                        res = self.team_inquiry(node.team, res, None, True)
+                        res = self.team_inquiry(session, node.team, res, None, True)
                         if res and not res == "ERROR" and not res == "":
                             logging.info(f"------------RESET---------------")
                             self.reset()
-                            self.notify("STOP")
+                            self.notify(session['session_id'], "STOP")
                             return node.team, DialogState.START, res, node.team
                         else:
-                            return self.recovery(query)
+                            return self.recovery(session['session_id'], query)
                     else:
 
                         logging.info("-> node team -> continua")
@@ -1074,34 +1140,31 @@ class Dialog(ABC):
                             self.__work_memory.append({"role": "system", "content": res})
                             # Check if res is empty
                             if not res or res == "":
-                                self.notify(f"no pude contactar al agente: {node.team}")
-                                return self.recovery(query)                    
-                        self.notify(f"le envio al agente {node.team}: {res}")
-                        res = self.team_inquiry(node.team, res, node.tool, False)
-                        self.notify(f"continuando con díalogo")
+                                return self.recovery(session['session_id'], query)                    
+                        res = self.team_inquiry(session, node.team, res, node.tool, False)
 
                 # Adiciona el texto al work memory
                 if res and not res == "ERROR" and not res == "":
                     logging.info(f"-> Adicion WM node team -> text: {res}")
                     self.__work_memory.append({"role": "system", "content": res})
                 else:
-                    return self.recovery(query)
+                    return self.recovery(session['session_id'], query)
                 logging.info("#########> Procesa respuesta del equipo en profundidad")
                 # Verifica si se alcanzó el límite de profundidad
                 self.__deep_count += 1
                 if self.__deep_count < self.__deep_limit:
-                    self.notify("efectuando inferencia en profundidad")
-                    return self.transition(owner, node.performative, res, True)
+                    self.notify(session['session_id'], "efectuando inferencia en profundidad")
+                    return self.transition(session, owner, node.performative, res, True)
                 else:
-                    self.notify(f"se alcanzó el límite de profundidad: {self.__deep_count}")
+                    self.notify(session['session_id'], f"se alcanzó el límite de profundidad: {self.__deep_count}")
                     self.__deep_count = 0
                     logging.info("-> node team -> deep limit")
                     logging.info(f"------------RESET---------------")
-                    self.notify("STOP")
+                    self.notify(session['session_id'], "STOP")
                     self.reset()
                     return "Web", DialogState.START, self.RECOVERY_MSG, "Web"
             else:
-                self.notify("efectuando inferencia...")
+                self.notify(session['session_id'], "efectuando inferencia...")
                 logging.info(f"D -> node: {node.text}")
                 self.__work_memory.append({"role": "user", "content": node.text})
                 logging.info(f"=> !!!!: {query}")
@@ -1113,26 +1176,25 @@ class Dialog(ABC):
                 self.__work_memory.append({"role": "system", "content": res})
                 # Check if res is empty
                 if not res or res == "":
-                    return self.recovery(query)
+                    return self.recovery(session['session_id'], query)
                 logging.info(f"=> Thought DEEP: {res}")
-                self.notify(f"Realizando inferencia: {res}")
                 new_dialog_state = node.performative
                 if not node.is_terminal:
-                    self.notify(f"continuando díalogo de inferencia")
+                    self.notify(session['session_id'], f"continuando díalogo de inferencia")
                     return owner, new_dialog_state, res, owner
-                self.notify(f"finalizando díalogo de inferencia")
+                self.notify(session['session_id'], f"finalizando díalogo de inferencia")
                 logging.info(f"Tipe node: {type(node)}")
                 logging.info(f"$$$> new_owner: {owner} new_dialog_state: {new_dialog_state}")
                 #logging.info(f"------------RESET---------------")
                 #self.reset()      
-                self.notify("STOP")
+                self.notify(session['session_id'], "STOP")
                 return "Web", DialogState.START, res, "Web"
             logging.info("END: do_transition")
         except Exception as e:
             traceback.print_exc()
             logging.info(f"------------RESET---------------")
             self.reset()
-            self.notify("STOP")
+            self.notify(session['session_id'], "STOP")
             return owner, DialogState.START, "Lo lamento, no puedo responder en este momento", owner
 
     def set_knowledge(self, knowledge) -> str:
