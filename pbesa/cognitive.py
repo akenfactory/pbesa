@@ -826,6 +826,7 @@ class Dialog(ABC):
                 dicriminador = "caso"
             #evaluating = False
             self.notify(session_id, f"fase uno es {dicriminador}...")
+            res = query
         else:
             logging.info("Respuesta con ambiguedad")
             self.notify(session_id, "identificando ambiguedad...")
