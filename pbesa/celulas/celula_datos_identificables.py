@@ -28,18 +28,19 @@ Responde únicamente con:
 7. "¿Cuál es el procedimiento para radicar una solicitud?" → NO_CONTIENE_DATOS
 
 ---
-
-Texto: "%s"
-
-Clasificación:
 """
 
 # Efectua la inferencia del modelo.
 def derive(service, text, max_tkns=4096) -> any:
     try:
         tmp_work_memory = []
-        prompt  = PROMPT % text
-        tmp_work_memory.append({"role": "user", "content": prompt})
+        user_prompt  = """
+        Texto: "%s"
+
+        Clasificación:
+        """ % text
+        tmp_work_memory.append({"role": "system", "content": PROMPT})
+        tmp_work_memory.append({"role": "user", "content": user_prompt})
         res = service.generate(tmp_work_memory, max_tokens=max_tkns)
         logging.info(f"Procesando: {text}")
         logging.info(f"Respuesta: {res}")

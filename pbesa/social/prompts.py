@@ -23,20 +23,15 @@ Respuesta: 3
 
 Ahora, evalúa el siguiente caso:
 
-Texto: "%s"
 Opciones:
 %s
-Respuesta:
 """
 
 DERIVE_PROMPT = """
-A partir de la siguiente información: "%s".
+A partir de la siguiente información: 
+"%s".
 
 Ahora, evalúa el siguiente caso:
-
-Texto: "%s"
-
-Respuesta:
 """
 
 RECOVERY_PROMPT = """
@@ -82,11 +77,7 @@ Respuesta: Ingrese al sitio, cree su cuenta, complete el formulario y revise su 
 
 Ahora, evalúa el siguiente caso:
 
-Texto: "%s"
-
 Perfil de adaptación: "%s"
-
-Respuesta:
 """
 
 ANALIZER_PROMPT = """
@@ -134,11 +125,6 @@ user: "Me robaron un dinero en el banco"
 system: "Al parecer tiene un incoveniente con una entidad financiera, ¿Puede indicarme más detalles sobre ésta entidad?"
 
 Ahora, evalúa el siguiente caso:
-
-Texto: 
-"%s"
-
-Respuesta:
 """
 
 SINTETIZER_PROMPT = """
@@ -153,6 +139,9 @@ Requisitos:
 
 - No incluyas explicaciones, razonamientos ni texto adicional.
 - Efectua una síntesis clara y concisa de la conversación.
+- **No adiciones suposiciones** o información no mencionada por el usuario.
+- No incluyas detalles innecesarios o irrelevantes.
+- **No adiciones conjeturas** como "parece", "podría" o "al parecer".
 
 ---
 
@@ -160,13 +149,13 @@ Ejemplo 1:
 
 user: "Hola como estas, un robo"
 
-system: Hola un gusto atenderle ¿Puede indicarme más detalles acerca del robo?
+assistant: Hola un gusto atenderle ¿Puede indicarme más detalles acerca del robo?
 
 user: "Me robaron un dinero en una parqueadero"
 
-system: "De acuerdo, ¿Puede indicarme más detalles el dinero se encontraba dentor de un carro en un parquedearo?"
+assistant: "De acuerdo, ¿Puede indicarme más detalles el dinero se encontraba dentro de un carro en un parquedearo?"
 
-user: "Si, el dinero estaba en la guantera del carro"
+user: "Sí, el dinero estaba en la guantera del carro"
 
 Respuesta: "El usuario reporta un robo de dinero que se encontraba en la guantera de su carro en un parqueadero."
 
@@ -176,11 +165,11 @@ Ejemplo 2:
 
 user: "Casa"
 
-system: Hola un gusto atenderle ¿Puede indicarme más detalles acerca de casa?
+assistant: Hola un gusto atenderle ¿Puede indicarme más detalles acerca de casa?
 
 user: "Se me cayo el techo"
 
-system: "De acuerdo, ¿Está presentado un problema con la aseguradora?
+assistant: "De acuerdo, ¿Está presentado un problema con la aseguradora?
 
 Respuesta: "El usuario reporta un problema con el techo de su casa y pregunta por la aseguradora."
 
@@ -190,24 +179,19 @@ Ejemplo 3:
 
 user: "Hola"
 
-system: Hola un gusto atenderle ¿Enque puedo ayudarte?
+assistant: Hola un gusto atenderle ¿Enque puedo ayudarte?
 
 user: "Un robo"
 
-system: "De acuerdo, ¿Puede indicarme más detalles acerca del robo?"
+assistant: "De acuerdo, ¿Puede indicarme más detalles acerca del robo?"
 
-user: "Me robaron, yo comprre un bono y la eps no me lo quiere reconocer"
+user: "Me robaron, yo compre un bono y la EPS no me lo quieren reconocer"
 
-system: "Al parecer tiene un incoveniente con una entidad prestadora de salud, ¿Puede indicarme más detalles sobre ésta entidad?"
+assistant: "Al parecer tiene un incoveniente con una entidad prestadora de salud, ¿Puede indicarme más detalles sobre ésta entidad?"
 
 Respuesta: "El usuario reporta un robo relacionado con un bono que compró y menciona que la EPS no lo quiere reconocer."
 
 ---
 
 Ahora, evalúa el siguiente caso:
-
-Texto: 
-"%s"
-
-Respuesta:
 """

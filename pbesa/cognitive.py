@@ -243,10 +243,11 @@ class AugmentedGeneration(ABC):
     def setup_world(self):
         """ Set up model method """
         # Define role
-        self.__work_memory.append({"role": "user", "content": self.__role.objective})
-        self.__work_memory.append({"role": "user", "content": self.__role.arquetype})
+        prompt = self.__role.objective
+        prompt +=  self.__role.arquetype
         if self.__role.example:
-            self.__work_memory.append({"role": "user", "content": self.__role.example})
+            prompt += self.__role.example
+        self.__work_memory.append({"role": "system", "content": prompt})
     
     def load_metadata(self, agent_metadata:AgentMetadata) -> None:
         """ Load metadata method
@@ -307,7 +308,7 @@ class AugmentedGeneration(ABC):
         """
         try:
             instantane_memory = self.__work_memory.copy()
-            instantane_memory.append({"role": "user", "content": instructions})
+            instantane_memory.append({"role": "system", "content": instructions})
             instantane_memory.append({"role": "user", "content": prompt})
             text = self.__ai_service.generate(instantane_memory)
             text = self.get_text(text)
@@ -325,16 +326,23 @@ class AugmentedGeneration(ABC):
         """
         try:
             content = self.retrieval(query)
-            prompt = DERIVE_PROMPT % (content, query)
+            prompt = DERIVE_PROMPT % content
             instantane_memory = self.__work_memory.copy()
-            instantane_memory.append({"role": "user", "content": prompt})
+            instantane_memory.append({"role": "system", "content": prompt})
+
+            user_prompt = f"""
+            Texto: "%s"
+
+            Respuesta:            
+            """ % query
+            instantane_memory.append({"role": "user", "content": user_prompt})
+
             logging.info("")
-            logging.info("----- MEMORY -----")
             logging.info("\n%s", json.dumps(instantane_memory, indent=4))
-            logging.info("-------------------")
             logging.info("")
             text = self.__ai_service.generate(instantane_memory)
             text = self.get_text(text)
+            logging.info(f"Thought: {text}")
             return text
         except Exception as e:
             traceback.print_exc()
@@ -558,7 +566,7 @@ class Dialog(ABC):
         self.__visited_nodes = 0
         # Define alter work memory
         self.__attemps = 1
-        self.__analazer_work_memory:list = []
+        self.__analaizer_work_memory:list = []
         self.__sintetizer_work_memory:list = []
 
     def setup_world(self):
@@ -570,12 +578,13 @@ class Dialog(ABC):
         if self.knowledge:
             conocimiento = f"Conocimiento:\n{self.knowledge}\n"
         continuar = "Ahora, evalúa el siguiente caso:\n"
-        self.__work_memory.append({"role": "user", "content": instrucciones})
-        self.__work_memory.append({"role": "user", "content": requisitos})
-        self.__work_memory.append({"role": "user", "content": ejemplo})
+        prompt = instrucciones
+        prompt += requisitos
+        prompt += ejemplo
         if self.knowledge:
-            self.__work_memory.append({"role": "user", "content": conocimiento})
-        self.__work_memory.append({"role": "user", "content": continuar})
+            prompt += conocimiento
+        prompt += continuar
+        self.__work_memory.append({"role": "system", "content": instrucciones})
         
     def get_model(self) -> any:
         """ Get model method 
@@ -741,7 +750,9 @@ class Dialog(ABC):
             mensaje_limpio = mensaje.replace("<|im_start|>user<|im_sep|>", "").replace("<|im_start|>system<|im_sep|>", "") \
                 .replace("<|im_start|>", "").replace("<|im_sep|>", "").replace("<|im_end|>", "") \
                 .replace("[Usuario]: ", "").replace("[Sistema]: ", "") \
-                .replace("<|user|>", "").replace("<|system|>", "")
+                .replace("<|user|>", "").replace("<|system|>", "") \
+                .replace("<|assistant|>", "").replace("<|bot|>", "") \
+                .replace("assistant", "")
             return mensaje_limpio.strip()
         else:
             return ""
@@ -749,7 +760,7 @@ class Dialog(ABC):
     def recovery(self, session_id, query):
         try:
             prompt = RECOVERY_PROMPT % query
-            temp_work_memory = [{"role": "user", "content": prompt}]
+            temp_work_memory = [{"role": "system", "content": prompt}]
             res = self.__ai_service.generate(temp_work_memory, max_tokens=500)
             res = self.get_text(res)
             if res and not res == "":
@@ -772,31 +783,57 @@ class Dialog(ABC):
         self.notify(session_id, "identificando intención...")        
 
         logging.info(f"Intento: {attemps}") 
+        
+        
+        
+        
         # Obtiene discriminadores
         # Verifica si es un saludo
         if attemps == 1:
-            saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)   
-        else:
-            saludo = "NO_SALUDO"
-        # De la forma user, system y de messages 
-        # genera un texto discriminando los tipos de mensajes
-        history = ""
-        for message in messages:
-            if message['user']:
-                history += f"user: {message['text']}\n"
-            else:
-                history += f"system: {message['text']}\n"
-        # User
-        #history += f"user: {query}\n"
+            
+            self.__analaizer_work_memory:list = [{"role": "system", "content": ANALIZER_PROMPT}]
+            
+            
+            saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)
 
-        # Actyaliza la memoria de trabajo
-        prompt = ANALIZER_PROMPT % history
-        self.__analazer_work_memory:list = [{"role": "user", "content": prompt}]
-        if attemps > 1:
+            user_prompt = f"""
+            user: {query}Texto: 
+            "%s"
+
+            Respuesta:        
+            """
+            self.__analaizer_work_memory.append({"role": "user", "content": user_prompt})
+            
+        elif attemps > 1:
+            saludo = "NO_SALUDO"
+
+            self.__sintetizer_work_memory:list = [{"role": "system", "content": SINTETIZER_PROMPT}]
+
+            cont = 0
+            for message in messages:
+                if message['user']:
+                    self.__analaizer_work_memory.append({"role": "user", "content": message['text']})
+                    
+                    if cont == 0:
+                        msg = f"""
+                        Texto: 
+                        "%s"
+
+                        Respuesta:
+                        """ % message['text']
+                    else:
+                        msg = message['text']
+
+                    self.__sintetizer_work_memory.append({"role": "user", "content": msg})
+                else:
+                    self.__analaizer_work_memory.append({"role": "assistant", "content": message['text']})
+                    self.__sintetizer_work_memory.append({"role": "assistant", "content": message['text']})
+
+            self.__analaizer_work_memory.append({"role": "user", "content": query})
+            #self.__sintetizer_work_memory.append({"role": "user", "content": query})
+        
             # Desde la seegunda iteeraccion de la
             # conversacion, se utiliza el sintentizador
-            prompt = SINTETIZER_PROMPT % history
-            self.__sintetizer_work_memory:list = [{"role": "user", "content": prompt}]
             logging.info("\n\n\n--------------SINTETIZER------------------")
             logging.info("\n%s", json.dumps(self.__sintetizer_work_memory, indent=4))
             logging.info("\n\n\n")
@@ -804,6 +841,8 @@ class Dialog(ABC):
             res = self.get_text(query)
             query = res
             logging.info(f"Thought: {query}")
+
+        #----------------------------------
         # Verifica si es una consulta o un caso
         caso = celula_casos.derive(self.__ai_service, query, max_tkns=10)
         consulta = celula_consultas.derive(self.__ai_service, query, max_tkns=10)
@@ -824,29 +863,20 @@ class Dialog(ABC):
                 dicriminador = "consulta"
             else:
                 dicriminador = "caso"
-            #evaluating = False
-            self.notify(session_id, f"fase uno es {dicriminador}...")
+            self.notify(session_id, f"[Fase 1]: Clase -> {dicriminador}.")
             res = query
         else:
             logging.info("Respuesta con ambiguedad")
             self.notify(session_id, "identificando ambiguedad...")
-            self.__analazer_work_memory.append({"role": "user", "content": query})
             logging.info("\n\n\n--------------ANALIZER------------------")
-            logging.info("\n%s", json.dumps(self.__analazer_work_memory, indent=4))
+            logging.info("\n%s", json.dumps(self.__analaizer_work_memory, indent=4))
             logging.info("------------------------------------------\n\n\n")
-            res = self.__ai_service.generate(self.__analazer_work_memory, max_tokens=10)
+            res = self.__ai_service.generate(self.__analaizer_work_memory, max_tokens=10)
             logging.info(f"Thought: {res}")
-            self.__analazer_work_memory.append({"role": "system", "content": query})                
-            self.__sintetizer_work_memory.append({"role": "system", "content": query})
-            #if caso == "QUEJA_DEMANDA":
-            #    dicriminador = "caso"
-            #elif consulta == "PREGUNTA_O_SOLICITUD":
-            #    dicriminador = "consulta"
-            #elif saludo == "SALUDO":
-            #    dicriminador = "saluda"
-        #logging.info(f"==> Discriminador: {dicriminador}")
-        #if dicriminador == "Ninguno":
-        #    dicriminador = "consulta"
+            self.__analaizer_work_memory.append({"role": "assistant", "content": res})                
+            self.__sintetizer_work_memory.append({"role": "assistant", "content": res})
+        #----------------------------------
+
         return dicriminador, res
 
     def transition(self, session, owner, dialog_state, query, team_source=False) -> str:
@@ -880,7 +910,7 @@ class Dialog(ABC):
                     # Limpia la memoria de trabajo
                     # Para que el agente la utilice en
                     # Otra conversacion
-                    self.__analazer_work_memory:list = []
+                    self.__analaizer_work_memory:list = []
                     self.__sintetizer_work_memory:list = []
                     if not dicriminador:
                         # Una nueva iteración de analisis
@@ -944,9 +974,15 @@ class Dialog(ABC):
                         for item in children:
                             options += f"{cont}) {item.text}\n"
                             cont += 1
-                        prompt = CLASSIFICATION_PROMPT % (query, options)
+                        prompt = CLASSIFICATION_PROMPT % options
                         logging.info(f"Query: {query},\n Options:\n{options}")
-                        self.__meta_work_memory.append({"role": "user", "content": prompt})
+                        self.__meta_work_memory.append({"role": "system", "content": prompt})
+                        user_prompt = f"""
+                        Texto: "%s"
+
+                        Respuesta:
+                        """ % query
+                        self.__meta_work_memory.append({"role": "user", "content": user_prompt})
                         res = self.__ai_service.generate(self.__meta_work_memory, max_tokens=10)
                         logging.info(f"Thought: {res}")
                         self.__meta_work_memory = []
@@ -1027,12 +1063,12 @@ class Dialog(ABC):
                 # Actualiza la memoria de 
                 # trabajo
                 if team_source:
-                    self.__work_memory.append({"role": "user", "content": res})
-                    logging.info(f"-> Actualiza WM: {res}")
+                    self.__work_memory.append({"role": "assistant", "content": res})
+                    logging.info(f"-> Team source Actualiza WM assistant: {res}")
                 else:
                     self.__work_memory.append({"role": "user", "content": query})
                     #self.__work_memory.append({"role": "user", "content": res})
-                    logging.info(f"-> Actualiza q-WM: {query}")
+                    logging.info(f"-> User source Actualiza WM user: {query}")
                     #logging.info(f"-> Actualiza r-WM: {res}")
                 #---------------------------
                 # Efectua inferencia
@@ -1072,7 +1108,6 @@ class Dialog(ABC):
                     if "consulta" in node.text.lower():
                         logging.info(f"-> node team -> consulta: {query}")
                     else:
-                        #self.__work_memory.append({"role": "user", "content": node.text})
                         logging.info("-----")
                         logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                         logging.info("-----")         
@@ -1101,7 +1136,7 @@ class Dialog(ABC):
                     # que el dialogo cambia de agente
                     if node.is_terminal:
                         logging.info(f"-> node team -> es terminal -> {node.text}")
-                        self.__work_memory.append({"role": "user", "content": node.text})
+                        self.__work_memory.append({"role": "system", "content": node.text})
                         
                         res = query
                         if "consulta" in node.text.lower():
@@ -1112,7 +1147,7 @@ class Dialog(ABC):
                             logging.info("-----")
                             res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
                             res = self.get_text(res)
-                            self.__work_memory.append({"role": "system", "content": res})
+                            self.__work_memory.append({"role": "assistant", "content": res})
                             # Check if res is empty
                             if not res or res == "":
                                 return self.recovery(session['session_id'], query)
@@ -1128,7 +1163,7 @@ class Dialog(ABC):
                     else:
 
                         logging.info("-> node team -> continua")
-                        self.__work_memory.append({"role": "user", "content": node.text})   
+                        self.__work_memory.append({"role": "system", "content": node.text})   
                         res = query
                         if "consulta" in node.text.lower():
                             logging.info(f"-> node team -> consulta: {query}")
@@ -1138,7 +1173,7 @@ class Dialog(ABC):
                             logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                             logging.info("-----")
                             res = self.get_text(res)
-                            self.__work_memory.append({"role": "system", "content": res})
+                            self.__work_memory.append({"role": "assistant", "content": res})
                             # Check if res is empty
                             if not res or res == "":
                                 return self.recovery(session['session_id'], query)                    
@@ -1147,7 +1182,7 @@ class Dialog(ABC):
                 # Adiciona el texto al work memory
                 if res and not res == "ERROR" and not res == "":
                     logging.info(f"-> Adicion WM node team -> text: {res}")
-                    self.__work_memory.append({"role": "system", "content": res})
+                    self.__work_memory.append({"role": "assistant", "content": res})
                 else:
                     return self.recovery(session['session_id'], query)
                 logging.info("#########> Procesa respuesta del equipo en profundidad")
@@ -1167,18 +1202,18 @@ class Dialog(ABC):
             else:
                 self.notify(session['session_id'], "efectuando inferencia...")
                 logging.info(f"D -> node: {node.text}")
-                self.__work_memory.append({"role": "user", "content": node.text})
+                self.__work_memory.append({"role": "system", "content": node.text})
                 logging.info(f"=> !!!!: {query}")
                 logging.info("-----")
                 logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                 logging.info("-----")
                 res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
                 res = self.get_text(res)
-                self.__work_memory.append({"role": "system", "content": res})
+                logging.info(f"=> Thought DEEP: {res}")
+                self.__work_memory.append({"role": "assistant", "content": res})
                 # Check if res is empty
                 if not res or res == "":
                     return self.recovery(session['session_id'], query)
-                logging.info(f"=> Thought DEEP: {res}")
                 new_dialog_state = node.performative
                 if not node.is_terminal:
                     self.notify(session['session_id'], f"continuando díalogo de inferencia")
@@ -1225,8 +1260,14 @@ class Dialog(ABC):
                 raise ValueError("Respuesta mal formada")
             # Adapt the data
             tmp_work_memory = []
-            prompt  = ADAPT_PROMPT % (text, profile)
-            tmp_work_memory.append({"role": "user", "content": prompt})
+            prompt  = ADAPT_PROMPT % profile
+            tmp_work_memory.append({"role": "system", "content": prompt})
+            user_propmt = f"""
+            Texto: "%s"
+
+            Respuesta:
+            """
+            tmp_work_memory.append({"role": "user", "content": user_propmt % text})
             res = self.__ai_service.generate(tmp_work_memory)
             res = self.get_text(res)
             logging.info(f"Respuesta adaptada: {res}")
@@ -1300,9 +1341,18 @@ class SpecialDispatch():
             options += f"{cont}) {item}\n"
             cont += 1
         query = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
-        prompt = CLASSIFICATION_PROMPT % (query, options)
+        prompt = CLASSIFICATION_PROMPT % options
         logging.info(f"Query: {query},\n Options:\n{options}")
-        self.__meta_work_memory.append({"role": "user", "content": prompt})
+        self.__meta_work_memory.append({"role": "system", "content": prompt})
+        
+
+        user_prompt = f"""
+        Texto: "%s"
+
+        Respuesta:
+        """ % query
+        self.__meta_work_memory.append({"role": "user", "content": user_prompt})
+        
         res = self.__ai_service.generate(self.__meta_work_memory, max_tokens=10)
         logging.info(f"Thought: {res}")
         self.__meta_work_memory = []

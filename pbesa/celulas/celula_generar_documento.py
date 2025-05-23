@@ -16,13 +16,6 @@ Usa el siguiente formato para estructurar tu respuesta. Si hay datos que no se e
 %s
 
 ---
-
-TEXTO DE ENTRADA:
-%s
-
----
-
-DEMANDA FORMATEADA:
 """
 
 # Efectua la inferencia del modelo.
@@ -30,8 +23,15 @@ def derive(service, formato, text, max_tkns=4096) -> any:
     try:
         logging.info(f"Procesando: {text}")
         tmp_work_memory = []
-        prompt  = PROMPT % (formato, text)
-        tmp_work_memory.append({"role": "user", "content": prompt})
+        user_prompt  = """
+        TEXTO DE ENTRADA:
+        %s
+        ---
+
+        DEMANDA FORMATEADA:
+        """ % text
+        tmp_work_memory.append({"role": "system", "content": PROMPT % formato})
+        tmp_work_memory.append({"role": "user", "content": user_prompt})
         res = service.generate(tmp_work_memory, max_tokens=max_tkns)
         logging.info(f"Respuesta: {res}")
         if not res or res == "":
