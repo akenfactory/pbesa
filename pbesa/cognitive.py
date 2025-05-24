@@ -692,15 +692,23 @@ class Dialog(ABC):
         except Exception as e:
             logging.error(f"Error al enviar notificación: {text}")
             logging.error(f"Error: {e}")
+    
+    def update_conversation(self, session_manager, id_conversacion, res):
+        conversation = session_manager.get_conversation(id_conversacion)
+        if conversation:
+            conversation['team-response'] = res
+            session_manager.update_conversation(id_conversacion, conversation)
+        else:
+            logging.error(f"Error al actualizar la conversación: {id_conversacion}")
 
     def team_inquiry(self, session, team, data, operation, session_flag) -> str:
         try:
             dto = None
             canales = self.state['canales']
             canal = canales.get(team)
+            session_manager = self.state['session_manager']
             if session_flag:
                 # Actualiza la sesion
-                session_manager = self.state['session_manager']
                 session_manager.update_session(session['session_id'], {
                     'team': team,
                     'owner': team,
@@ -718,9 +726,12 @@ class Dialog(ABC):
                 response = canal.post(team.lower(), dto)
                 if response and not response['status']:
                     logging.error(f'No se pudo establecer la comunicación con el agente remoto')
+                    self.update_conversation(session_manager, session['id_conversacion'], None)
                     return None
                 logging.info(f'>>>> Response: {response}')
-                return response['message']['response']
+                res = response['message']['response']
+                self.update_conversation(session_manager, session['id_conversacion'], res)
+                return res
             else:
                 if operation and not operation == "Ninguno":
                     dto = {
@@ -739,12 +750,18 @@ class Dialog(ABC):
                     }
                 response = canal.post(team.lower(), dto)
                 if response['status']:
-                    return response['message']['response']
+                    logging.info(f'>>>> Response: {response}')
+                    res = response['message']['response']
+                    self.update_conversation(session_manager, session['id_conversacion'], res)
+                    return res
                 else:
+                    self.update_conversation(session_manager, session['id_conversacion'], None)
+                    logging.error(f'No se pudo establecer la comunicación con el agente remoto')
                     return None
             logging.info("END: team_inquiry")
         except Exception as e:
             logging.error(f"Error al consultar al equipo: {team}")
+            traceback.print_exc()
             return None
 
     def get_text(self, mensaje) -> str:
@@ -783,30 +800,13 @@ class Dialog(ABC):
         dicriminador = None
         logging.info(f"------------Flujo de excepcion---------------")
         self.notify(session_id, "identificando intención...")        
-
         logging.info(f"Intento: {attemps}") 
         
+            
+        self.__analaizer_work_memory:list = [{"role": "system", "content": ANALIZER_PROMPT}]
         
         
-        
-        # Obtiene discriminadores
-        # Verifica si es un saludo
-        if attemps == 1:
-            
-            self.__analaizer_work_memory:list = [{"role": "system", "content": ANALIZER_PROMPT}]
-            
-            
-            saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)
-
-            user_prompt = f"""
-            user: {query}Texto: 
-            "%s"
-
-            Respuesta:        
-            """
-            self.__analaizer_work_memory.append({"role": "user", "content": user_prompt})
-            
-        elif attemps > 1:
+        if attemps > 1:
             saludo = "NO_SALUDO"
 
             self.__sintetizer_work_memory:list = [{"role": "system", "content": SINTETIZER_PROMPT}]
@@ -843,6 +843,17 @@ class Dialog(ABC):
             res = self.get_text(query)
             query = res
             logging.info(f"Thought: {query}")
+        else:
+            saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)
+
+            user_prompt = f"""
+            user: {query}Texto: 
+            "%s"
+
+            Respuesta:        
+            """
+            self.__analaizer_work_memory.append({"role": "user", "content": user_prompt})
+            
 
         #----------------------------------
         # Verifica si es una consulta o un caso
@@ -1065,8 +1076,9 @@ class Dialog(ABC):
                 # Actualiza la memoria de 
                 # trabajo
                 if team_source:
-                    self.__work_memory.append({"role": "assistant", "content": res})
-                    logging.info(f"-> Team source Actualiza WM assistant: {res}")
+                    pass
+                    #self.__work_memory.append({"role": "system", "content": res})
+                    #logging.info(f"-> Team source Actualiza WM assistant: {res}")
                 else:
                     self.__work_memory.append({"role": "user", "content": query})
                     #self.__work_memory.append({"role": "user", "content": res})
@@ -1101,60 +1113,78 @@ class Dialog(ABC):
                 #------------------------------
                 # Accion
                 #------------------------------
-                logging.info(f"-> node action: {node.action}")
+                logging.info(f"[Node]:[Action]: {node.action}")
                 if node.tool and not node.tool == "Ninguno":
                     self.notify(session['session_id'], "aplicando herramienta...")
-                    logging.info(f"-> node tool: {node.tool}")
-
+                    logging.info(f"[Node]:[Action]:[Tool]: {node.tool}")
                     res = query
                     if "consulta" in node.text.lower():
-                        logging.info(f"-> node team -> consulta: {query}")
+                        logging.info(f"[Node]:[Action]:[Tool]:[Consulta]: {query}")
                     else:
+                        logging.info("[Node]:[Action]:[Tool]:[Inferencia]:")
                         logging.info("-----")
                         logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                         logging.info("-----")         
                         res = self.__ai_service.generate(self.__work_memory, max_tokens=100)
-                        logging.info(f"-> node tool: {res}")
+                        logging.info(f"[Node]:[Action]:[Tool]:[Thought]: {res}")
                         res = self.get_text(res)
                     # Check if res is empty
                     if not res or res == "":
                         self.notify(session['session_id'], "no pude hacer uso de la herramienta")
                         return self.recovery(session['session_id'], query)
-                    logging.info(f"-> node tool: envia -> {res}")
+                    logging.info(f"[Node]:[Action]:[Tool]:[Envia]: {res}")
                     res = self.team_inquiry(session, node.team, res, node.tool, False)
-
+                    logging.info(f"[Node]:[Action]:[Tool]:[Respuesta]: {res}")
                     if res and not res == "ERROR" and not isinstance(res, str):
-                        logging.info(f"COMANDO -> node tool: recibe -> {res}")
+                        logging.info("[Node]:[Action]:[Tool]: COMMANDO")
                         self.reset()
                         self.notify(session['session_id'], "STOP")
                         return "Web", DialogState.START, res, "Web"
+                    logging.info("[Node]:[Action]:[Tool]: CONTINUA-INFERENCIA")
                 else:
                     self.notify(session['session_id'], "realizando llamada...")
                     #------------------------------
                     # Lllamada
                     #------------------------------
-                    logging.info(f"-> node team: {node.team}")
+                    logging.info(f"[Node]:[Action]:[Call]: {node.team}")
                     # Verifica si el nodo es termianl ya que significa
                     # que el dialogo cambia de agente
                     if node.is_terminal:
-                        logging.info(f"-> node team -> es terminal -> {node.text}")
-                        self.__work_memory.append({"role": "system", "content": node.text})
-                        
+                        logging.info(f"[Node]:[Action]:[Call]:[Terminal]: {node.text}")
+                        self.__work_memory.append({"role": "system", "content": node.text})                        
                         res = query
                         if "consulta" in node.text.lower():
-                            logging.info(f"-> node team -> consulta: {query}")
+                            logging.info(f"[Node]:[Action]:[Call]:[Terminal]:[Consulta] {query}")
+                            if "especialistas" in node.text.lower():
+                                self.notify(session['session_id'], "consultando especialistas...")
+                                session_manager = self.state['session_manager']
+                                conversation = session_manager.get_conversation(session['id_conversacion'])
+                                if 'team-response' in conversation:
+                                    res = conversation['team-response']
+                                else:
+                                    res = "Lo lamento, no puedo responder en este momento"
+                                    logging.info("[Node]:[Action]:[Call]:[Terminal]:[Consulta]: No hay respuesta de equipo")
+                                logging.info("[Node]:[Action]:[Call]:[Terminal]:[Consulta]: Especialistas")                            
                         else:
+                            logging.info("[Node]:[Action]:[Call]:[Terminal]:[Inferencia]:")
                             logging.info("-----")
                             logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                             logging.info("-----")
                             res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
                             res = self.get_text(res)
                             self.__work_memory.append({"role": "assistant", "content": res})
+                            logging.info(f"[Node]:[Action]:[Call]:[Terminal]:[Thought]: {res}")
                             # Check if res is empty
                             if not res or res == "":
                                 return self.recovery(session['session_id'], query)
-                        logging.info(f"-> node team -> envia: {res}")
+                        #------------------
+                        # Envia la 
+                        # respuesta 
+                        # al equipo
+                        #------------------
+                        logging.info(f"[Node]:[Action]:[Call]:[Terminal]:[Envia]: {res}")
                         res = self.team_inquiry(session, node.team, res, None, True)
+                        logging.info(f"[Node]:[Action]:[Call]:[Terminal]:[Respuesta]: {res}")
                         if res and not res == "ERROR" and not res == "":
                             logging.info(f"------------RESET---------------")
                             self.reset()
@@ -1163,23 +1193,26 @@ class Dialog(ABC):
                         else:
                             return self.recovery(session['session_id'], query)
                     else:
-
-                        logging.info("-> node team -> continua")
+                        logging.info(f"[Node]:[Action]:[Call]:[Continua]: {node.text}")
                         self.__work_memory.append({"role": "system", "content": node.text})   
                         res = query
                         if "consulta" in node.text.lower():
-                            logging.info(f"-> node team -> consulta: {query}")
+                            logging.info(f"[Node]:[Action]:[Call]:[Continua]:[Consulta] {query}")
                         else:
-                            logging.info(f"-> node team -> sentencia: {node.text}")
+                            logging.info("[Node]:[Action]:[Call]:[Continua]:[Inferencia]:")
                             logging.info("-----")
                             logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
                             logging.info("-----")
                             res = self.get_text(res)
                             self.__work_memory.append({"role": "assistant", "content": res})
+                            logging.info(f"[Node]:[Action]:[Call]:[Continua]:[Thought]: {res}")
                             # Check if res is empty
                             if not res or res == "":
-                                return self.recovery(session['session_id'], query)                    
+                                return self.recovery(session['session_id'], query)
+                        logging.info(f"[Node]:[Action]:[Call]:[Continua]:[Envia]: {res}")                        
                         res = self.team_inquiry(session, node.team, res, node.tool, False)
+                        logging.info(f"[Node]:[Action]:[Call]:[Continua]:[Respuesta]: {res}")
+                        logging.info("[Node]:[Action]:[Call]:[Continua]: CONTINUA-INFERENCIA")
 
                 # Adiciona el texto al work memory
                 if res and not res == "ERROR" and not res == "":
@@ -1203,7 +1236,7 @@ class Dialog(ABC):
                     return "Web", DialogState.START, self.RECOVERY_MSG, "Web"
             else:
                 self.notify(session['session_id'], "efectuando inferencia...")
-                logging.info(f"D -> node: {node.text}")
+                logging.info(f"[Inferencia]:[node]: {node.text}")
                 self.__work_memory.append({"role": "system", "content": node.text})
                 logging.info(f"=> !!!!: {query}")
                 logging.info("-----")
@@ -1211,7 +1244,7 @@ class Dialog(ABC):
                 logging.info("-----")
                 res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
                 res = self.get_text(res)
-                logging.info(f"=> Thought DEEP: {res}")
+                logging.info(f"[Inferencia]:[Thought]:[DEEP]: {res}")
                 self.__work_memory.append({"role": "assistant", "content": res})
                 # Check if res is empty
                 if not res or res == "":
