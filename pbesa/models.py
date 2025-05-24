@@ -237,9 +237,9 @@ class AzureOpenAIInference(AIService):
         try:
 
             # Espera 10 segubdos antes de la primera llamada
-            print("Esperando 3 segundos antes de la primera llamada...")
-            time.sleep(3)
-            print("Llamada a la API de OpenAI...")
+            #print("Esperando 3 segundos antes de la primera llamada...")
+            #time.sleep(3)
+            #print("Llamada a la API de OpenAI...")
             
 
             response = self.model.chat.completions.create(

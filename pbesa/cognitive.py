@@ -127,7 +127,7 @@ def define_service_provider(provider, ai_service=None) -> None:
             service_provider.register("AZURE_INFERENCE", service)
         elif "AZURE_OPEN_AI_INFERENCE" in provider:
             service = AzureOpenAIInference()
-            service_provider.register("AZURE_INFERENCE", service)
+            service_provider.register("AZURE_OPEN_AI_INFERENCE", service)
         return service_provider, service
 
 # --------------------------------------------------------
@@ -239,16 +239,21 @@ class AugmentedGeneration(ABC):
         self.__ai_service = None
         # Set tools
         self.__def_tool_dict = self.def_tool_dict()
+        # system_prompt
+        self.__system_prompt = None
         
     def setup_world(self):
         """ Set up model method """
         # Define role
-        prompt = self.__role.objective
-        prompt +=  self.__role.arquetype
+        self.__system_prompt = "Instrucciones:\n"
+        self.__system_prompt += self.__role.description
+        self.__system_prompt += self.__role.objective
+        self.__system_prompt += "Requisitos:\n"
+        self.__system_prompt +=  self.__role.arquetype
         if self.__role.example:
-            prompt += self.__role.example
-        self.__work_memory.append({"role": "system", "content": prompt})
-    
+            self.__system_prompt += "Ejemplos:\n"
+            self.__system_prompt += self.__role.example
+        
     def load_metadata(self, agent_metadata:AgentMetadata) -> None:
         """ Load metadata method
         :param agent_metadata: agent_metadata
@@ -320,29 +325,26 @@ class AugmentedGeneration(ABC):
             self.reset()
             return "Lo lamento, no puedo responder en este momento"
         
-    def derive(self, query) -> str:
+    def derive(self, query, max_tokens=4096, temperature=0, top_p=0.9) -> str:
         """ Generate method
         :return: str
         """
         try:
             content = self.retrieval(query)
-            prompt = DERIVE_PROMPT % content
-            instantane_memory = self.__work_memory.copy()
-            instantane_memory.append({"role": "system", "content": prompt})
-
-            user_prompt = f"""
+            prompt = self.__system_prompt + (DERIVE_PROMPT % content)
+            prompt += f"""
             Texto: "%s"
 
             Respuesta:            
             """ % query
-            instantane_memory.append({"role": "user", "content": user_prompt})
-
+            self.__work_memory.append({"role": "user", "content": prompt})
             logging.info("")
-            logging.info("\n%s", json.dumps(instantane_memory, indent=4))
+            logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
             logging.info("")
-            text = self.__ai_service.generate(instantane_memory)
+            text = self.__ai_service.generate(self.__work_memory, max_tokens, temperature, top_p)
             text = self.get_text(text)
             logging.info(f"Thought: {text}")
+            self.__work_memory = []
             return text
         except Exception as e:
             traceback.print_exc()

@@ -27,8 +27,9 @@ Opciones:
 %s
 """
 
+
 DERIVE_PROMPT = """
-A partir de la siguiente información: 
+**Conocimiento:** 
 "%s".
 
 Ahora, evalúa el siguiente caso:
