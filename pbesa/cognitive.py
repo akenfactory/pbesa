@@ -534,6 +534,7 @@ class Dialog(ABC):
         self.model_conf:dict = None
         self.__work_memory:list = []
         self.__meta_work_memory:list = []
+        self.__system_work_memory:list = []
         # Define role
         self.__agent_metadata = "Undefined"
         # Define role
@@ -585,8 +586,10 @@ class Dialog(ABC):
         prompt += ejemplo
         if self.knowledge:
             prompt += conocimiento
+        else:
+            logging.warning(f"No se ha definido conocimiento para el agente: {self.id}")
         prompt += continuar
-        self.__work_memory.append({"role": "system", "content": instrucciones})
+        self.__system_work_memory.append({"role": "system", "content": prompt})
         
     def get_model(self) -> any:
         """ Get model method 
@@ -778,6 +781,7 @@ class Dialog(ABC):
     
     def recovery(self, session_id, query):
         try:
+            self.__work_memory = self.system_work_memory.copy()
             prompt = RECOVERY_PROMPT % query
             temp_work_memory = [{"role": "system", "content": prompt}]
             res = self.__ai_service.generate(temp_work_memory, max_tokens=500)
@@ -896,6 +900,9 @@ class Dialog(ABC):
         try:
             res = ""
             logging.info(f"TOPTQ: {owner} - {dialog_state} - {team_source} - {query}")
+            # Actualiza la memoria de trabajo
+            if len(self.__work_memory) == 0:
+                self.__work_memory = self.__system_work_memory.copy()
             # Punto de restauración
             counter = (self.__recovery['counter'] + 1) if self.__recovery['performative'] == dialog_state else self.__recovery['counter']
             self.__recovery = {
@@ -1089,6 +1096,7 @@ class Dialog(ABC):
                 new_owner, new_dialog_state, res, team = self.do_transition(session, owner, node, query)
                 if res and not res == "ERROR" and isinstance(res, str):
                     res = self.get_text(res)
+                self.__work_memory = self.__system_work_memory.copy()
                 return new_owner, new_dialog_state, res, team
             else:
                 logging.info(f"------------RESET---------------")
@@ -1102,6 +1110,18 @@ class Dialog(ABC):
             self.reset()
             self.notify(session['session_id'], "STOP")
             return owner, DialogState.START, "Lo lamento, no puedo responder en este momento", owner
+
+    def chek_user_interaction(self, children):
+        """ Check user interaction method
+        :param children: children
+        :param query: query
+        :return: bool
+        """
+        if children and len(children) > 0:    
+            for item in children:
+                if item.actor == "Des. Usuario":
+                    return True
+        return False
 
     def do_transition(self, session, owner, node, query) -> str:
         """ Generate method
@@ -1198,6 +1218,13 @@ class Dialog(ABC):
                         res = query
                         if "consulta" in node.text.lower():
                             logging.info(f"[Node]:[Action]:[Call]:[Continua]:[Consulta] {query}")
+                            if "expertos" in node.text.lower():
+                                self.notify(session['session_id'], "consultando expertos...")
+                                session_manager = self.state['session_manager']
+                                conversation = session_manager.get_conversation(session['id_conversacion'])
+                                conversation['case'] = query
+                                session_manager.update_conversation(session['id_conversacion'], conversation)
+                                logging.info("[Node]:[Action]:[Call]:[Continua]:[Consulta]: Caso almacenado")
                         else:
                             logging.info("[Node]:[Action]:[Call]:[Continua]:[Inferencia]:")
                             logging.info("-----")
@@ -1251,7 +1278,16 @@ class Dialog(ABC):
                     return self.recovery(session['session_id'], query)
                 new_dialog_state = node.performative
                 if not node.is_terminal:
-                    self.notify(session['session_id'], f"continuando díalogo de inferencia")
+                    # Verifica recursion
+                    if not self.chek_user_interaction(node.children):
+                        if self.__visited_nodes > 3:
+                            logging.info(f"[Inferencia]:[Recursion]: Deep limit")
+                            return self.recovery(session['session_id'], "Lo lamento, no puedo responder en este momento")
+                        logging.info(f"[Inferencia]:[Recursion]:[Performativa]: {node.performative}")
+                        self.notify(session['session_id'], "efectuando inferencia en profundidad")
+                        #return self.do_transition(session, owner, node, query)
+                        return self.transition(session, owner, new_dialog_state, res, True)
+                    self.notify(session['session_id'], f"continuando díalogo paso a usuario")
                     return owner, new_dialog_state, res, owner
                 self.notify(session['session_id'], f"finalizando díalogo de inferencia")
                 logging.info(f"Tipe node: {type(node)}")
