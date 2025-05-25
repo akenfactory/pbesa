@@ -835,7 +835,7 @@ class Dialog(ABC):
                     self.__analaizer_work_memory.append({"role": "assistant", "content": message['text']})
                     self.__sintetizer_work_memory.append({"role": "assistant", "content": message['text']})
 
-            self.__analaizer_work_memory.append({"role": "user", "content": query})
+            #self.__analaizer_work_memory.append({"role": "user", "content": query})
             #self.__sintetizer_work_memory.append({"role": "user", "content": query})
         
             # Desde la seegunda iteeraccion de la
@@ -843,10 +843,10 @@ class Dialog(ABC):
             logging.info("\n\n\n--------------SINTETIZER------------------")
             logging.info("\n%s", json.dumps(self.__sintetizer_work_memory, indent=4))
             logging.info("\n\n\n")
-            query = self.__ai_service.generate(self.__sintetizer_work_memory, max_tokens=10)
+            query = self.__ai_service.generate(self.__sintetizer_work_memory, max_tokens=50)
             res = self.get_text(query)
             query = res
-            logging.info(f"Thought: {query}")
+            logging.info(f"[Stage-1][Sintetizer][Thought]: {query}")
         else:
             saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)
 
@@ -867,13 +867,13 @@ class Dialog(ABC):
         es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and not ("NO_SALUDO" in saludo)    
         es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and not ("NO_PREGUNTA" in consulta)
         es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and not ("NO_QUEJA_DEMANDA" in caso)
-        print("\n------------------- Clase --------------------------")
-        logging.info(f"==> Saludo: {saludo}, Consulta: {consulta}, Caso: {caso}")                    
-        logging.info(f"==> Es saludo: {es_saludo}, Es consulta: {es_consulta}, Es caso: {es_caso}")
-        print("\n-----------------------------------------------------")
+        logging.info("\n------------------- Clase --------------------------")
+        logging.info(f"[Stage-1]: Saludo({saludo}), Consulta({consulta}), Caso({caso})")                    
+        logging.info(f"[Stage-1]: Es saludo({es_saludo}), Es consulta({es_consulta}), Es caso({es_caso})")
+        logging.info("\n-----------------------------------------------------")
         # Verifica los casos
         if es_saludo or es_consulta or es_caso:
-            logging.info("Respuesta Clara")
+            logging.info("[Stage-1]: Discriminador encontrado")
             if es_saludo:
                 dicriminador = "saluda"
             elif es_consulta:
@@ -883,13 +883,13 @@ class Dialog(ABC):
             self.notify(session_id, f"[Fase 1]: Clase -> {dicriminador}.")
             res = query
         else:
-            logging.info("Respuesta con ambiguedad")
+            logging.info("[Stage-1]: Respuesta con ambiguedad")
             self.notify(session_id, "identificando ambiguedad...")
             logging.info("\n\n\n--------------ANALIZER------------------")
             logging.info("\n%s", json.dumps(self.__analaizer_work_memory, indent=4))
             logging.info("------------------------------------------\n\n\n")
-            res = self.__ai_service.generate(self.__analaizer_work_memory, max_tokens=10)
-            logging.info(f"Thought: {res}")
+            res = self.__ai_service.generate(self.__analaizer_work_memory, max_tokens=50)
+            logging.info(f"[Stage-1][Thought]: {res}")
             self.__analaizer_work_memory.append({"role": "assistant", "content": res})                
             self.__sintetizer_work_memory.append({"role": "assistant", "content": res})
         #----------------------------------
@@ -1119,7 +1119,7 @@ class Dialog(ABC):
         """
         if children and len(children) > 0:    
             for item in children:
-                if item.actor == "Des. Usuario":
+                if item.actor == "Des. Usuario" or item.actor == "Salto":
                     return True
         return False
 

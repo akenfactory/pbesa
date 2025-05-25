@@ -50,12 +50,12 @@ def derive(service, text, max_tkns=4096) -> any:
         tmp_work_memory.append({"role": "system", "content": PROMPT})
         tmp_work_memory.append({"role": "user", "content": user_prompt})
         res = service.generate(tmp_work_memory, max_tokens=max_tkns)
-        logging.info(f"Respuesta: {res}")
+        logging.info(f"[Celula][Casos][Respuesta]: {res}")
         if not res or res == "":
             res = text
-            logging.warning(f"No obtener una respuesta.")
+            logging.warning(f"[Celula][Casos]: No obtener una respuesta.")
         return res
     except Exception as e:
-        logging.error(f"Error al procesar: {text}")
+        logging.error(f"[Celula][Casos]: Error al procesar: {text}")
         logging.error(e)
         return None
