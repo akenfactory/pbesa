@@ -888,7 +888,7 @@ class Dialog(ABC):
                 dicriminador = "consulta"
             else:
                 dicriminador = "caso"
-            self.notify(session_id, f"[Fase 1]: Clase -> {dicriminador}.")
+            self.notify(session_id, f"primera fase se identifica: {dicriminador}.")
             res = query
         else:
             logging.info("[Stage-1]: Respuesta con ambiguedad")
