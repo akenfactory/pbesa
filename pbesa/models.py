@@ -25,13 +25,7 @@ from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import HttpResponseError
 import time
 from openai import AzureOpenAI, RateLimitError, APIStatusError
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type,
-    wait_fixed
-)
+
 
 # --------------------------------------------------------
 # Define classes
@@ -43,6 +37,8 @@ class AIService(ABC):
     def __init__(self) -> None:
         self.model:any = None
         self.model_conf:dict = None
+        self.substitude_1_model:any = None
+        self.substitude_2_model:any = None
         
     @abstractmethod
     def setup(self, config: dict) -> None:
@@ -85,24 +81,24 @@ class GPTService(AIService):
                 try:
                     if not res or res == 'null' or res == 'N/A' or 'N/A' in res:
                         #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                        print("OpenAI response not completed")
+                        logging.info("OpenAI response not completed")
                         return None
                     #self.log.info("OpenAI response completed", extra={'log_data': {'gpt_response': response}})
-                    print("OpenAI response completed")
+                    logging.info("OpenAI response completed")
                     self.__work_memory.append({"role": "assistant", "content": res})
                     return res
                 except:
                     #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                    print("OpenAI response not completed")
+                    logging.info("OpenAI response not completed")
                     return None
             else:
                 #self.log.warning("OpenAI response not completed", extra={'log_data': {'gpt_response': response}})
-                print("OpenAI response not completed")
+                logging.info("OpenAI response not completed")
                 return None
         except Exception as e:
             trace_err = traceback.format_exc()
             err = str(e) + " - " + trace_err
-            print(err)
+            logging.info(err)
             return None
 
 class AIFoundry(AIService):
@@ -129,31 +125,38 @@ class AzureInference(AIService):
 
     def __init__(self) -> None:
         super().__init__()
+        self.max_tokens = 2000
+        self.deployment = "Llama-3.3-70B-Instruct"
 
-    def setup(self, config: dict) -> None:        
+    def setup(self, config: dict, substitude=None) -> None:        
         self.model_conf:dict = config
         self.model:any = ChatCompletionsClient(
-            endpoint=config['AZURE_INFERENCE_SDK_ENDPOINT'], 
+            endpoint=config['AZURE_GENERAL_INFERENCE_SDK_ENDPOINT'], 
             credential=AzureKeyCredential(config['AZURE_INFERENCE_SDK_KEY'])
         )
+        self.max_tokens = self.model_conf['MAX_TOKENS']
+        if substitude:
+            self.deployment = substitude
+        else:
+            self.deployment = self.model_conf['DEPLOYMENT_NAME']
 
     def generate(self, work_memory, max_tokens=2000, temperature=0, top_p=0.9) -> str:
         try:
             response = self.model.complete(
                 messages= work_memory,
-                model =self.model_conf['DEPLOYMENT_NAME'],
-                max_tokens=self.model_conf['MAX_TOKENS']
+                model= self.deployment,
+                max_tokens= self.max_tokens
             )
             return response.choices[0].message.content
         except Exception as e:
             # Maneja otros errores
             trace_err = traceback.format_exc()
             err = str(e) + " - " + trace_err
-            print(f"Error en la respuesta de Azure: {err}")
+            logging.info(f"Error en la respuesta de Azure: {err}")
             if self.model_conf['SUBSTITUDE_DEPLOYMENT_NAME'] == "Llama-3.3-70B-Instruct":
-                print("\n\n\n")
-                print("----------------------------------------")
-                print("Entra a jugar el sustituto")
+                logging.info("\n\n\n")
+                logging.info("----------------------------------------")
+                logging.info("Entra a jugar el sustituto")
                 try:
                     logging.info("\n\n\n.............................................")
                     logging.info("\n%s", json.dumps(work_memory, indent=4))
@@ -164,173 +167,141 @@ class AzureInference(AIService):
                         model =self.model_conf['SUBSTITUDE_DEPLOYMENT_NAME'],
                         max_tokens=self.model_conf['MAX_TOKENS']
                     )
-                    print("----------------------------------------")
-                    print("\n\n\n")
+                    logging.info("----------------------------------------")
+                    logging.info("\n\n\n")
                     
                     return response.choices[0].message.content
                 except Exception as e2:
                     trace_err2 = traceback.format_exc()
                     err2 = str(e2) + " - " + trace_err2
-                    print(f"Error en la respuesta de Azure: {err2}")
-                    print("----------------------------------------")
-                    print("\n\n\n")
+                    logging.info(f"Error en la respuesta de Azure: {err2}")
+                    logging.info("----------------------------------------")
+                    logging.info("\n\n\n")
                     
                     raise e2
                     
-
-# Función auxiliar para determinar la espera basada en el error
-def wait_strategy_for_rate_limit(retry_state):
-    """
-    Determina la estrategia de espera.
-    Si es un RateLimitError y hay un header 'Retry-After', lo usa.
-    De lo contrario, usa un backoff exponencial.
-    """
-    exception = retry_state.outcome.exception()
-    if isinstance(exception, (RateLimitError, APIStatusError)):
-        if hasattr(exception, 'response') and exception.response:
-            headers = exception.response.headers
-            retry_after_seconds = headers.get("Retry-After")
-            if retry_after_seconds:
-                try:
-                    wait_time = int(retry_after_seconds)
-                    print(f"Rate limit: Respetando header Retry-After: esperando {wait_time} segundos.")
-                    return wait_fixed(wait_time)(retry_state) # Usa wait_fixed para el tiempo específico
-                except ValueError:
-                    print(f"Rate limit: Retry-After header no es un entero ({retry_after_seconds}). Usando backoff exponencial.")
-            else: # No hay Retry-After, usar backoff exponencial
-                print("Rate limit: No se encontró header Retry-After. Usando backoff exponencial.")
-        else: # No hay objeto response, usar backoff exponencial
-            print("Rate limit: No se encontró objeto response en la excepción. Usando backoff exponencial.")
-    
-    # Fallback a backoff exponencial para otros casos o si Retry-After falla
-    return wait_exponential(multiplier=1, min=4, max=60)(retry_state)
-
 class AzureOpenAIInference(AIService):
 
-    def __init__(self) -> None:
+    def __init__(self, substitude_1_model = None, substitude_2_model  = None) -> None:
         super().__init__()
+        self.substitude_1_model = substitude_1_model
+        self.substitude_2_model = substitude_2_model
 
     def setup(self, config: dict) -> None:        
         self.model_conf:dict = config
         self.model:any = AzureOpenAI(
             api_version=config['API_VERSION'],
-            azure_endpoint=config['AZURE_INFERENCE_SDK_ENDPOINT'],
+            azure_endpoint=config['AZURE_OPEN_AI_INFERENCE_SDK_ENDPOINT'],
             api_key=config['AZURE_INFERENCE_SDK_KEY'],
+            max_retries=0
         )
-        self.current_time = time.time()
+        self.wait_time = 0
         self.total_tokens = 0
-
-    def _log_attempt_number(self, retry_state):
-        """Función para registrar el número de intento."""
-        print(f"Intento {retry_state.attempt_number} fallido. Reintentando...")
-
-    # Usamos retry_if_exception_type para especificar qué excepciones deben activar un reintento.
-    # wait_strategy_for_rate_limit determinará dinámicamente el tiempo de espera.
-    @retry(
-        retry=retry_if_exception_type((RateLimitError, APIStatusError)), # Reintentar en estos errores
-        wait=wait_strategy_for_rate_limit, # Estrategia de espera personalizada
-        stop=stop_after_attempt(5), # Número máximo de intentos (además del original)
-        before_sleep=_log_attempt_number # Función a llamar antes de esperar/dormir
-    )
+        self.exception_time = None
+        self.main_model_enable = True
+        self.current_time = time.time()
+        if self.substitude_1_model is not None:
+            self.substitude_1_model.setup(config, config['SUBSTITUDE_1_DEPLOYMENT_NAME'])
+        if self.substitude_2_model is not None:
+            self.substitude_2_model.setup(config, config['SUBSTITUDE_2_DEPLOYMENT_NAME'])
+        
+    def wait_strategy_for_rate_limit(self, exception):
+        self.wait_time = 0
+        self.main_model_enable = False
+        self.exception_time = time.time()
+        print(exception)
+        if isinstance(exception, (RateLimitError, APIStatusError)):
+            if hasattr(exception, 'response') and exception.response:
+                headers = exception.response.headers
+                retry_after_seconds = headers.get("Retry-After")
+                if retry_after_seconds:
+                    try:
+                        wait_time = int(retry_after_seconds)
+                        logging.info(f"Rate limit: Respetando header Retry-After: esperando {wait_time} segundos.")
+                        self.wait_time = wait_time
+                    except ValueError:
+                        logging.info(f"Rate limit: Retry-After header no es un entero ({retry_after_seconds}). Usando backoff exponencial.")
+                else: # No hay Retry-After, usar backoff exponencial
+                    logging.info("Rate limit: No se encontró header Retry-After. Usando backoff exponencial.")
+            else: # No hay objeto response, usar backoff exponencial
+                logging.info("Rate limit: No se encontró objeto response en la excepción. Usando backoff exponencial.")
+        if self.wait_time == 0:
+            logging.warning("Rate limit: No se especificó Retry-After. Usando backoff exponencial.")
+            # Si no se especifica Retry-After, usar backoff exponencial
+            self.wait_time = 2 ** (self.wait_time // 60)
+        
     def generate(self, work_memory, max_tokens=4096, temperature=0, top_p=0.9) -> str:
-        print(f"Generando completion para el modelo: {self.model_conf['DEPLOYMENT_NAME']}")
         try:
-
-            # Espera 10 segubdos antes de la primera llamada
-            #print("Esperando 3 segundos antes de la primera llamada...")
-            #time.sleep(3)
-            #print("Llamada a la API de OpenAI...")
-            
-
-            response = self.model.chat.completions.create(
-                messages=work_memory,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                model=self.model_conf['DEPLOYMENT_NAME'],
-            )
-
-            # --- Agrega estas líneas para imprimir el uso de tokens ---
-            if hasattr(response, 'usage') and response.usage is not None:
-                print("\n--- Uso de Tokens ---")
-                print(f"Tokens enviados (prompt): {response.usage.prompt_tokens}")
-                print(f"Tokens recibidos (completion): {response.usage.completion_tokens}")
-                print(f"Tokens totales: {response.usage.total_tokens}")
-                self.total_tokens += response.usage.total_tokens
-                current_t = time.time()
-                elapsed_time = current_t - self.current_time
-                print(f"Tiempo transcurrido para la generación: {elapsed_time:.2f} segundos")
-                # En minutos
-                elapsed_time_minutes = elapsed_time / 60
-                print(f"Tiempo transcurrido para la generación: {elapsed_time_minutes:.2f} minutos")
-                print(f"Total de tokens generados hasta ahora: {self.total_tokens}")
-                
-
-                if elapsed_time >= 60:
-                    print("Reiniciando el contador de tiempo y tokens...")
-                    self.total_tokens = 0
-
-                print("---------------------\n")
-            else:
-                 print("\n--- Uso de Tokens no disponible en la respuesta ---")
-            # -------------------------------------------------------
-
-            
-
-            return response.choices[0].message.content
-        except RateLimitError as e:
-            # Capturada específicamente para poder inspeccionarla si es necesario,
-            # pero tenacity se encargará del reintento si esta función la vuelve a lanzar.
-            print(f"Error de Límite de Tasa detectado (RateLimitError): {e.message}")
-            # Aquí podríamos añadir lógica específica si el error persiste después de los reintentos de tenacity
-            # o si queremos hacer algo antes de que tenacity lo maneje (aunque `before_sleep` es mejor para eso)
-            raise # Re-lanzar para que tenacity la maneje
-        except APIStatusError as e:
-            # Similar a RateLimitError, pero más general para errores de API con código de estado.
-            # La lógica de reintento de tenacity ya verifica el tipo, pero podemos ser explícitos.
-            print(f"Error de API detectado (APIStatusError): Código {e.status_code}, Mensaje: {e.message}")
-            if e.status_code == 429:
-                # Ya cubierto por retry_if_exception_type y wait_strategy_for_rate_limit
-                pass # Tenacity lo manejará
-            else:
-                # Si es otro APIStatusError que no queremos reintentar con esta política,
-                # podríamos manejarlo aquí o dejar que se propague si no está en retry_if_exception_type.
-                print(f"Error de API no relacionado con límite de tasa: {e.status_code}")
-            raise # Re-lanzar para que tenacity (si aplica) o el llamador lo maneje
+            if self.main_model_enable:
+                response = self.model.chat.completions.create(
+                    messages=work_memory,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    top_p=top_p,
+                    model=self.model_conf['DEPLOYMENT_NAME'],
+                )
+                if hasattr(response, 'usage') and response.usage is not None:
+                    logging.info("\n--- Uso de Tokens ---")
+                    logging.info(f"Tokens enviados (prompt): {response.usage.prompt_tokens}")
+                    logging.info(f"Tokens recibidos (completion): {response.usage.completion_tokens}")
+                    logging.info(f"Tokens totales: {response.usage.total_tokens}")
+                    self.total_tokens += response.usage.total_tokens
+                    current_t = time.time()
+                    elapsed_time = current_t - self.current_time
+                    logging.info(f"Tiempo transcurrido para la generación: {elapsed_time:.2f} segundos")
+                    # En minutos
+                    elapsed_time_minutes = elapsed_time / 60
+                    logging.info(f"Tiempo transcurrido para la generación: {elapsed_time_minutes:.2f} minutos")
+                    logging.info(f"Total de tokens generados hasta ahora: {self.total_tokens}")
+                    # Reinicia el contador si ha pasado más de 1 minuto
+                    if elapsed_time >= 60:
+                        logging.info("Reiniciando el contador de tiempo y tokens...")
+                        self.total_tokens = 0
+                        self.current_time = time.time()
+                        self.exception_time = None
+                    else:
+                        if self.total_tokens >= 40000:
+                            logging.info("Total de tokens alcanzado (40,000). Activando el modo de excepcion.")
+                            self.main_model_enable = False
+                            self.wait_time = 60 - elapsed_time + 5
+                            self.exception_time = time.time()
+                            logging.info(f"Esperando {self.wait_time} segundos antes de reintentar.")
+                    logging.info("---------------------\n")                    
+                else:
+                    logging.info("\n--- Uso de Tokens no disponible en la respuesta ---")        
+                return response.choices[0].message.content
         except Exception as e:
-            print(f"Ocurrió un error inesperado durante la generación: {e}")
-            raise # Re-lanzar otras excepciones
-
-# --- Ejemplo de Uso ---
-if __name__ == '__main__':
-    # Simula una configuración
-    mock_config = {
-        'API_VERSION': '2024-02-01', # Reemplaza con tu API version real
-        'AZURE_INFERENCE_SDK_ENDPOINT': 'TU_ENDPOINT_AZURE_OPENAI', # Reemplaza
-        'AZURE_INFERENCE_SDK_KEY': 'TU_API_KEY', # Reemplaza
-        'DEPLOYMENT_NAME': 'gpt-4o' # O tu nombre de despliegue
-    }
-
-    # Reemplaza con tu endpoint y key reales para probar.
-    # ¡CUIDADO! Las siguientes líneas HARÁN LLAMADAS REALES si descomentas y configuras.
-    # Por ahora, para evitar llamadas reales en este ejemplo, el cliente no se usará activamente
-    # a menos que descomentes las líneas de llamada.
-
-    # client = LLMClient(mock_config)
-    # sample_work_memory = [{"role": "user", "content": "Hola, ¿cómo estás?"}]
-
-    # try:
-    #     # Para probar el RateLimitError, necesitarías hacer muchas llamadas muy rápido
-    #     # o simular que la API devuelve un RateLimitError.
-    #     # Por ejemplo, podrías mockear `client.model.chat.completions.create`
-    #     # para que lance un RateLimitError la primera vez.
-    #     print("Intentando generar contenido...")
-    #     # response_content = client.generate(sample_work_memory)
-    #     # print("\nRespuesta del modelo:")
-    #     # print(response_content)
-    #     print("\nEjemplo de simulación (sin llamada real):")
-    #     print("Si esto fuera una llamada real y ocurriera un error 429,")
-    #     print("verías los mensajes de reintento de tenacity.")
+            self.wait_strategy_for_rate_limit(e)
+        #----------------------------------
+        # Exception mode
+        #----------------------------------
+        if not self.main_model_enable:
+            # Si ha pasado más de 1 minuto desde la última excepción, reinicia el modelo principal
+            current_t = time.time()
+            elapsed_time = current_t - self.exception_time
+            logging.info(f"Esperando {self.wait_time} segundos antes de reintentar. Transcurridos: {elapsed_time:.2f} segundos")
+            if elapsed_time >= self.wait_time:
+                logging.info("Reiniciando el modelo principal después de 1 minuto.")
+                self.main_model_enable = True
+                self.current_time = time.time()
+                self.total_tokens = 0
+            # Si el modelo principal está deshabilitado, intenta con los modelos de sustitución
+            try:
+                logging.warning("Modelo principal en espera. Intentando con el modelo de sustitución-1...")
+                if self.substitude_1_model is None:
+                    raise ValueError("No se ha configurado un modelo de sustitución-1.")
+                return self.substitude_1_model.generate(work_memory)                
+            except Exception as e:
+                try:
+                    logging.warning("Modelo principal en espera. Intentando con el modelo de sustitución-2...")
+                    if self.substitude_2_model is None:
+                        raise ValueError("No se ha configurado un modelo de sustitución-2.")
+                    return self.substitude_2_model.generate(work_memory)
+                except Exception as e2:
+                    trace_err = traceback.format_exc()
+                    err = str(e2) + " - " + trace_err
+                    logging.fatal(f"Error en la respuesta de Azure: {err}")
+                    raise e2
     
 class ServiceProvider:
     _services = {}

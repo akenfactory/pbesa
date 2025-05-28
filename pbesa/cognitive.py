@@ -26,7 +26,7 @@ from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
-                      celula_generar_documento)
+                      celula_generar_documento, celula_expertos)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -109,7 +109,7 @@ class AgentMetadata():
 # Define common functions
 # --------------------------------------------------------
 
-def define_service_provider(provider, ai_service=None) -> None:
+def define_service_provider(provider, ai_service=None, substitudes = False) -> None:
         # Define provider
         service = None
         service_provider = ServiceProvider()
@@ -126,7 +126,12 @@ def define_service_provider(provider, ai_service=None) -> None:
             service = AzureInference()
             service_provider.register("AZURE_INFERENCE", service)
         elif "AZURE_OPEN_AI_INFERENCE" in provider:
-            service = AzureOpenAIInference()
+            substitude_1 = None 
+            substitude_2 = None
+            if substitudes:
+                substitude_1 = AzureInference()
+                substitude_2 = AzureInference()
+            service = AzureOpenAIInference(substitude_1, substitude_2)
             service_provider.register("AZURE_OPEN_AI_INFERENCE", service)
         return service_provider, service
 
@@ -268,8 +273,8 @@ class AugmentedGeneration(ABC):
         """
         return self.model
     
-    def load_model(self, provider, config, ai_service=None) -> None:
-        self.__service_provider, service = define_service_provider(provider, ai_service)
+    def load_model(self, provider, config, ai_service=None, substitudes = False) -> None:
+        self.__service_provider, service = define_service_provider(provider, ai_service, substitudes)
         service.setup(config)
         self.__ai_service = service
     
@@ -286,12 +291,15 @@ class AugmentedGeneration(ABC):
         # Set up model
         self.setup_world()
 
-    def command_derive(self, command, query) -> str | None:
+    def command_derive(self, command, query, max_tkns=2000) -> str | None:
         try:
             if command == "DATA_TYPE":
                 return celula_datos_identificables.derive(self.__ai_service, query)
             elif command == "GENERATE_DOCUMENT":
                 return celula_generar_documento.derive(self.__ai_service, query["template"], query["text"])
+            elif command == "EXPERTS":
+                retrieval = self.retrieval(query)
+                return celula_expertos.derive(self.__ai_service, query, retrieval, max_tkns)
             return None
         except Exception as e:
             traceback.print_exc()
@@ -650,8 +658,8 @@ class Dialog(ABC):
         # Set dialog state
         self.__dfa['start'] = iniciadores
 
-    def load_model(self, provider, config, ai_service=None) -> None:
-        self.__service_provider, service = define_service_provider(provider, ai_service)
+    def load_model(self, provider, config, ai_service=None, substitudes = False) -> None:
+        self.__service_provider, service = define_service_provider(provider, ai_service, substitudes)
         service.setup(config)
         self.__ai_service = service
     
@@ -1371,8 +1379,8 @@ class SpecialDispatch():
         # Reference of ADM
         self.adm = Adm()
 
-    def load_model(self, provider, config, ai_service=None) -> None:
-        self.__service_provider, service = define_service_provider(provider, ai_service)
+    def load_model(self, provider, config, ai_service=None, substitudes = False) -> None:
+        self.__service_provider, service = define_service_provider(provider, ai_service, substitudes)
         service.setup(config)
         self.__ai_service = service
         # Setup options dictionary
@@ -1386,7 +1394,7 @@ class SpecialDispatch():
                 role = agent.get_role()
                 self.__options_dict[agent_id] = role.description
         # Log
-        logging.info(f"Agentes disponibles: {self.__options_dict.keys()}")
+        #logging.info(f"Agentes disponibles: {self.__options_dict.keys()}")
     
     def get_text(self, mensaje) -> str:
         if mensaje:

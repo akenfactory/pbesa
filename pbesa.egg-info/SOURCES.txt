@@ -74,6 +74,7 @@ pbesa/celulas/__init__.py
 pbesa/celulas/celula_casos.py
 pbesa/celulas/celula_consultas.py
 pbesa/celulas/celula_datos_identificables.py
+pbesa/celulas/celula_expertos.py
 pbesa/celulas/celula_generar_documento.py
 pbesa/celulas/celula_preguntas.py
 pbesa/celulas/celula_saludos.py

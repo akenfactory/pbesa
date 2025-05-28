@@ -139,6 +139,12 @@ class DelegateAction(Action):
         """
         pass
 
+    def send_response(self, response:any) -> None:
+        """ Send response
+        @param response: Response
+        """
+        self.agent.get_gateway().put(response)
+
 # --------------------------------------------------------
 # Define ResponseAction component
 # --------------------------------------------------------
