@@ -789,7 +789,10 @@ class Dialog(ABC):
     
     def recovery(self, session_id, query):
         try:
-            self.__work_memory = self.system_work_memory.copy()
+            logging.info("\n\n\n")
+            logging.info(f"------------RECOVERY---------------")
+            logging.info("\n\n\n")    
+            self.__work_memory = self.__system_work_memory.copy()
             prompt = RECOVERY_PROMPT % query
             temp_work_memory = [{"role": "system", "content": prompt}]
             res = self.__ai_service.generate(temp_work_memory, max_tokens=500)
@@ -803,7 +806,9 @@ class Dialog(ABC):
                 self.notify(session_id, "STOP") 
                 return "Web", DialogState.START, self.RECOVERY_MSG, "Web"
         except Exception as e:
-            return self.RECOVERY_MSG
+            logging.error(f"Error en la recuperación: {e}")
+            msg = "Lo lamento, no puedo responder en este momento."
+            return "Web", DialogState.START, msg, "Web"
         
     def stage_one_classification(self, session_id, messages, attemps, query):
         """ Stage one classification """
@@ -1280,10 +1285,10 @@ class Dialog(ABC):
                 res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
                 res = self.get_text(res)
                 logging.info(f"[Inferencia]:[Thought]:[DEEP]: {res}")
-                self.__work_memory.append({"role": "assistant", "content": res})
                 # Check if res is empty
-                if not res or res == "":
+                if not res or res == "" or res == "ERROR":
                     return self.recovery(session['session_id'], query)
+                self.__work_memory.append({"role": "assistant", "content": res})                
                 new_dialog_state = node.performative
                 if not node.is_terminal:
                     # Verifica recursion

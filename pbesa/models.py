@@ -141,44 +141,51 @@ class AzureInference(AIService):
             self.deployment = self.model_conf['DEPLOYMENT_NAME']
 
     def generate(self, work_memory, max_tokens=2000, temperature=0, top_p=0.9) -> str:
+        again = False
         try:
             response = self.model.complete(
                 messages= work_memory,
                 model= self.deployment,
                 max_tokens= self.max_tokens
             )
-            return response.choices[0].message.content
+            res = response.choices[0].message.content
+            if not res or res == "" or res == "ERROR":
+                again = True
+            else:
+                return res
         except Exception as e:
             # Maneja otros errores
+            again = True
             trace_err = traceback.format_exc()
             err = str(e) + " - " + trace_err
             logging.info(f"Error en la respuesta de Azure: {err}")
+        if again:
             if self.model_conf['SUBSTITUDE_DEPLOYMENT_NAME'] == "Llama-3.3-70B-Instruct":
                 logging.info("\n\n\n")
                 logging.info("----------------------------------------")
-                logging.info("Entra a jugar el sustituto")
+                logging.info("Sustitudo atiendendo Llama-3.3-70B-Instruct")
                 try:
                     logging.info("\n\n\n.............................................")
                     logging.info("\n%s", json.dumps(work_memory, indent=4))
                     logging.info("........................................\n\n\n")
-
                     response = self.model.complete(
                         messages= work_memory,
                         model =self.model_conf['SUBSTITUDE_DEPLOYMENT_NAME'],
                         max_tokens=self.model_conf['MAX_TOKENS']
                     )
                     logging.info("----------------------------------------")
-                    logging.info("\n\n\n")
-                    
+                    logging.info("\n\n\n")                    
                     return response.choices[0].message.content
                 except Exception as e2:
                     trace_err2 = traceback.format_exc()
                     err2 = str(e2) + " - " + trace_err2
                     logging.info(f"Error en la respuesta de Azure: {err2}")
                     logging.info("----------------------------------------")
-                    logging.info("\n\n\n")
-                    
+                    logging.info("\n\n\n")                    
                     raise e2
+        logging.error("\n\n\n****************************************")
+        logging.error("No se pudo generar una respuesta válida.")
+        return ""
                     
 class AzureOpenAIInference(AIService):
 
@@ -231,7 +238,8 @@ class AzureOpenAIInference(AIService):
             self.wait_time = 2 ** (self.wait_time // 60)
         
     def generate(self, work_memory, max_tokens=4096, temperature=0, top_p=0.9) -> str:
-        try:
+        again = False
+        try:            
             if self.main_model_enable:
                 response = self.model.chat.completions.create(
                     messages=work_memory,
@@ -268,14 +276,19 @@ class AzureOpenAIInference(AIService):
                             logging.info(f"Esperando {self.wait_time} segundos antes de reintentar.")
                     logging.info("---------------------\n")                    
                 else:
-                    logging.info("\n--- Uso de Tokens no disponible en la respuesta ---")        
-                return response.choices[0].message.content
+                    logging.info("\n--- Uso de Tokens no disponible en la respuesta ---")
+                res = response.choices[0].message.content
+                if not res or res == "" or res == "ERROR":
+                    again = True
+                else:  
+                    return response.choices[0].message.content
         except Exception as e:
             self.wait_strategy_for_rate_limit(e)
         #----------------------------------
         # Exception mode
         #----------------------------------
-        if not self.main_model_enable:
+        if not self.main_model_enable or again:
+            again = False
             # Si ha pasado más de 1 minuto desde la última excepción, reinicia el modelo principal
             current_t = time.time()
             elapsed_time = current_t - self.exception_time

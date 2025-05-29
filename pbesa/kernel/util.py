@@ -73,7 +73,8 @@ class APIClient:
                 url=f"{self.base_url}/{endpoint}",
                 headers=self.headers,
                 json=payload,
-                timeout=self.timeout
+                timeout=self.timeout,
+                verify=False
             )
             response.raise_for_status()
             print(f"POST request to {endpoint} succeeded: {response.status_code}")
