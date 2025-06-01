@@ -60,7 +60,7 @@ class APIClient:
         if access_token:
             self.headers['Authorization'] = f'Bearer {access_token}'
     
-    def post(self, endpoint, payload) -> dict:
+    def post(self, endpoint, payload, timeout=120) -> dict:
         """
         Make a POST request to the specified endpoint with the given data.
         :param endpoint: Endpoint to send the POST request to.
@@ -73,7 +73,7 @@ class APIClient:
                 url=f"{self.base_url}/{endpoint}",
                 headers=self.headers,
                 json=payload,
-                timeout=self.timeout,
+                timeout=timeout,
                 verify=False
             )
             response.raise_for_status()
@@ -101,7 +101,7 @@ class APIClient:
             "message": "An error occurred while making the POST request."
         }
     
-    def get(self, endpoint) -> dict:
+    def get(self, endpoint, timeout=120) -> dict:
         """
         Make a GET request to the specified endpoint.
         :param endpoint: Endpoint to send the GET request to.
@@ -112,7 +112,7 @@ class APIClient:
             response = requests.get(
                 url=f"{self.base_url}/{endpoint}",
                 headers=self.headers,
-                timeout=self.timeout
+                timeout=timeout
             )
             response.raise_for_status()
             print(f"GET request to {endpoint} succeeded: {response.status_code}")
@@ -139,7 +139,7 @@ class APIClient:
             "message": "An error occurred while making the GET request."
         }
     
-    def put(self, endpoint, payload) -> dict:
+    def put(self, endpoint, payload, timeout=120) -> dict:
         """
         Make a PUT request to the specified endpoint with the given data.
         :param endpoint: Endpoint to send the PUT request to.
@@ -152,7 +152,7 @@ class APIClient:
                 url=f"{self.base_url}/{endpoint}",
                 headers=self.headers,
                 json=payload,
-                timeout=self.timeout
+                timeout=timeout
             )
             response.raise_for_status()
             print(f"PUT request to {endpoint} succeeded: {response.status_code}")
@@ -179,7 +179,7 @@ class APIClient:
             "message": "An error occurred while making the PUT request."
         }
     
-    def delete(self, endpoint) -> dict:
+    def delete(self, endpoint, timeout=120) -> dict:
         """
         Make a DELETE request to the specified endpoint.
         :param endpoint: Endpoint to send the DELETE request to.
@@ -190,7 +190,7 @@ class APIClient:
             response = requests.delete(
                 url=f"{self.base_url}/{endpoint}",
                 headers=self.headers,
-                timeout=self.timeout
+                timeout=timeout
             )
             response.raise_for_status()
             print(f"DELETE request to {endpoint} succeeded: {response.status_code}")

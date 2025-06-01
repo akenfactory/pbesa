@@ -734,7 +734,7 @@ class Dialog(ABC):
                 }
                 # Evia mensaje a los agentes remotos
                 logging.info('>>>> Call remote agent: team.\n')
-                response = canal.post(team.lower(), dto)
+                response = canal.post(team.lower(), dto, timeout=300)
                 if response and not response['status']:
                     logging.error(f'No se pudo establecer la comunicación con el agente remoto')
                     self.update_conversation(session_manager, session['id_conversacion'], None)
@@ -759,7 +759,7 @@ class Dialog(ABC):
                             'text': data
                         },
                     }
-                response = canal.post(team.lower(), dto)
+                response = canal.post(team.lower(), dto, timeout=300)
                 if response['status']:
                     logging.info(f'>>>> Response: {response}')
                     res = response['message']['response']
