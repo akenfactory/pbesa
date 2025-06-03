@@ -909,6 +909,17 @@ class Dialog(ABC):
 
         return dicriminador, res
 
+    def get_node(self, performative):
+        """ Get node method
+        :param performative: performative
+        :return: Node
+        """
+        if performative in self.__dfa:
+            return self.__dfa[performative]
+        else:
+            logging.error(f"Performativa {performative} no encontrada en el DFA")
+            return None
+        
     def transition(self, session, owner, dialog_state, query, team_source=False) -> str:
         try:
             res = ""

@@ -78,6 +78,7 @@ pbesa/celulas/celula_expertos.py
 pbesa/celulas/celula_generar_documento.py
 pbesa/celulas/celula_preguntas.py
 pbesa/celulas/celula_saludos.py
+pbesa/celulas/data_extraction_cel.py
 pbesa/celulas/web.py
 pbesa/kernel/__init__.py
 pbesa/kernel/adapter.py
