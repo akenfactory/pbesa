@@ -15,6 +15,7 @@
 import re
 import uuid
 import json
+import pickle
 import logging
 import traceback
 from .mas import Adm
@@ -656,7 +657,10 @@ class Dialog(ABC):
             logging.debug(iniciador.text)
         logging.debug("")
         # Set dialog state
-        self.__dfa['start'] = iniciadores
+        self.__dfa['start'] = iniciadores        
+        #filename = f'{self.__role.name}_grafo.pkl'
+        #with open(filename, 'wb') as f:
+        #    pickle.dump(grafo, f)
 
     def load_model(self, provider, config, ai_service=None, substitudes = False) -> None:
         self.__service_provider, service = define_service_provider(provider, ai_service, substitudes)
