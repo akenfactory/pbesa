@@ -881,25 +881,57 @@ class Dialog(ABC):
         caso = celula_casos.derive(self.__ai_service, query, max_tkns=10)
         consulta = celula_consultas.derive(self.__ai_service, query, max_tkns=10)
         # Verifica si es un saludo, consulta o caso
-        es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and not ("NO_SALUDO" in saludo)    
-        es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and not ("NO_PREGUNTA" in consulta)
-        es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and not ("NO_QUEJA_DEMANDA" in caso)
+
+        #es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and not ("NO_SALUDO" in saludo)    
+        #es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and not ("NO_PREGUNTA" in consulta)
+        #es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and not ("NO_QUEJA_DEMANDA" in caso)
+        
+        es_saludo = ("SALUDO" in saludo) and not ("NO_SALUDO" in saludo)    
+        es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and not ("NO_PREGUNTA" in consulta)
+        es_caso = ("QUEJA_DEMANDA" in caso) and not ("NO_QUEJA_DEMANDA" in caso)
+        
         logging.info("\n------------------- Clase --------------------------")
         logging.info(f"[Stage-1]: Saludo({saludo}), Consulta({consulta}), Caso({caso})")                    
         logging.info(f"[Stage-1]: Es saludo({es_saludo}), Es consulta({es_consulta}), Es caso({es_caso})")
         logging.info("\n-----------------------------------------------------")
+
+        eva = 0
+        ambiguedad = False
+        eva = 1 if es_saludo else 0
+        eva += 1 if es_consulta else 0
+        eva += 1 if es_caso else 0
+        
         # Verifica los casos
-        if es_saludo or es_consulta or es_caso:
+        if eva > 0 and eva < 3:
             logging.info("[Stage-1]: Discriminador encontrado")
-            if es_saludo:
+            
+            # Casos identificables
+            if es_saludo and not es_consulta and not es_caso:
                 dicriminador = "saluda"
-            elif es_consulta:
+            elif es_consulta and not es_saludo and not es_caso:
                 dicriminador = "consulta"
-            else:
+            elif es_caso and not es_saludo and not es_consulta:
                 dicriminador = "caso"
-            self.notify(session_id, f"primera fase se identifica: {dicriminador}.")
-            res = query
+
+            # Casos ambiguos con saludo
+            elif es_saludo and es_consulta and not es_caso:
+                dicriminador = "consulta"
+            elif es_saludo and es_caso and not es_consulta:
+                dicriminador = "caso"
+
+            # Casos ambiguos con consulta y caso
+            elif es_consulta and es_caso and not es_saludo:
+                res = "Lo lamento, ¿Desea que le ayude con una Consulta o una Demanda?"
+            else:
+                ambiguedad = True
+
+            if dicriminador:
+                self.notify(session_id, f"primera fase se identifica: {dicriminador}.")
+                res = query
         else:
+            ambiguedad = True
+
+        if ambiguedad:    
             logging.info("[Stage-1]: Respuesta con ambiguedad")
             self.notify(session_id, "identificando ambiguedad...")
             logging.info("\n\n\n--------------ANALIZER------------------")
