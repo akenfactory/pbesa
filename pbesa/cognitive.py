@@ -1553,7 +1553,8 @@ class SpecialDispatch():
             self.kusto_open()
 
             attemps = 1
-            while attemps <= 3:
+            exit = False
+            while attemps <= 3 and not exit:
                 logging.info(f"Intento de selección de agente: {attemps}")
 
                 res = self.__ai_service.generate(self.__meta_work_memory, max_tokens=10)
