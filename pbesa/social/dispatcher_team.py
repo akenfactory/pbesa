@@ -172,7 +172,7 @@ class SelectedDispatcher(Action):
                         else:
                             logging.info(f"The {agent_id} is not instance of AugmentedGeneration or Dialog")
                 # Check if the mayor agent is the same as the agent        
-                if score_mayor > 0.501:
+                if score_mayor < 2:
                     logging.info(f'The agent {mayor_ag.id} will be assigned')
                     exit = False
                     while not exit:
