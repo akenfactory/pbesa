@@ -143,6 +143,11 @@ Requisitos:
 - **No adiciones suposiciones** o información no mencionada por el usuario.
 - No incluyas detalles innecesarios o irrelevantes.
 - **No adiciones conjeturas** como "parece", "podría" o "al parecer".
+- **No menciones: el usario...*** solo sintetiza la intención del usuario.
+- No responas: "El usuario reporta..." o "El usuario menciona..." o "El usuario pregunta..."
+- No responas "Pregunta por..." o "Menciona..." o "Solicita información sobre..."
+- Solo responde con la intención del usuario de manera directa y clara.
+- No responas: "El usuario reporta..." o "El usuario menciona..." o "El usuario pregunta... o "Pregunta por..." o "Menciona..." o "Solicita información sobre..."
 
 ---
 
@@ -158,7 +163,7 @@ assistant: "De acuerdo, ¿Puede indicarme más detalles el dinero se encontraba 
 
 user: "Sí, el dinero estaba en la guantera del carro"
 
-Respuesta: "El usuario reporta un robo de dinero que se encontraba en la guantera de su carro en un parqueadero."
+Respuesta: "Robo de dinero que se encontraba en la guantera de su carro en un parqueadero."
 
 ---
 
@@ -172,7 +177,7 @@ user: "Se me cayo el techo"
 
 assistant: "De acuerdo, ¿Está presentado un problema con la aseguradora?
 
-Respuesta: "El usuario reporta un problema con el techo de su casa y pregunta por la aseguradora."
+Respuesta: "Problema con el techo de su casa y pregunta por la aseguradora."
 
 ---
 
@@ -190,7 +195,7 @@ user: "Me robaron, yo compre un bono y la EPS no me lo quieren reconocer"
 
 assistant: "Al parecer tiene un incoveniente con una entidad prestadora de salud, ¿Puede indicarme más detalles sobre ésta entidad?"
 
-Respuesta: "El usuario reporta un robo relacionado con un bono que compró y menciona que la EPS no lo quiere reconocer."
+Respuesta: "Robo relacionado con un bono que compró y menciona que la EPS no lo quiere reconocer."
 
 ---
 
