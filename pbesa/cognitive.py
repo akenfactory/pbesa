@@ -27,7 +27,7 @@ from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
-                      celula_generar_documento, celula_expertos)
+                      celula_generar_documento, celula_expertos, celula_pertinencia)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -901,6 +901,8 @@ class Dialog(ABC):
         eva += 1 if es_consulta else 0
         eva += 1 if es_caso else 0
         
+        msg = "Lo lamento, no puedo ayudarle con su consulta. Dado que no está relacionada con los servicios que presta Justifacil."
+
         # Verifica los casos
         if eva > 0 and eva < 3:
             logging.info("[Stage-1]: Discriminador encontrado")
@@ -910,20 +912,46 @@ class Dialog(ABC):
                 dicriminador = "saluda"
             elif es_consulta and not es_saludo and not es_caso:
                 dicriminador = "consulta"
+                per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
+                if per_res and not per_res == "":
+                    if "NO_RELACIONADO" in per_res:
+                        dicriminador = None
+                        res = msg
             elif es_caso and not es_saludo and not es_consulta:
                 dicriminador = "caso"
+                per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
+                if per_res and not per_res == "":
+                    if "NO_RELACIONADO" in per_res:
+                        dicriminador = None
+                        res = msg
 
             # Casos ambiguos con saludo
             elif es_saludo and es_consulta and not es_caso:
                 dicriminador = "consulta"
+                per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
+                if per_res and not per_res == "":
+                    if "NO_RELACIONADO" in per_res:
+                        dicriminador = None
+                        res = msg
             elif es_saludo and es_caso and not es_consulta:
                 dicriminador = "caso"
+                per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
+                if per_res and not per_res == "":
+                    if "NO_RELACIONADO" in per_res:
+                        dicriminador = None
+                        res = msg
 
             # Casos ambiguos con consulta y caso
             elif es_consulta and es_caso and not es_saludo:
-                res = "Lo lamento, ¿Desea que le ayude con una Consulta o una Demanda?"
+                res = "Lo lamento, puede confirmar si ¿Desea que le ayude con una Consulta o una Demanda?"
             else:
                 ambiguedad = True
+                per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
+                if per_res and not per_res == "":
+                    if "NO_RELACIONADO" in per_res:
+                        dicriminador = None
+                        res = msg
+                        ambiguedad = False
 
             if dicriminador:
                 self.notify(session_id, f"primera fase se identifica: {dicriminador}.")
