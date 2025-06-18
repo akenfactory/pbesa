@@ -2,44 +2,36 @@ import logging
 
 SYSTEM_PROMPT = """
 
-Eres un clasificador de temas relacionados con funciones jurisdiccionales en Colombia y funcionalidades del sistema Justifacil. Tu tarea es analizar el siguiente texto y determinar si está relacionado con alguno de los siguientes elementos:
+Tu única tarea es clasificar el siguiente texto en una de dos categorías: `VEROSIMIL` o `ABSURDO`.
 
-1. Temas procesales o jurisdiccionales en Colombia que involucren entidades como:
-   - Superintendencia de Industria y Comercio (SIC)
-   - Dirección General Marítima (DIMAR)
-   - Dirección Nacional de Derecho de Autor (DNDA)
-   - Instituto Colombiano Agropecuario (ICA)
-   - Superintendencia Financiera de Colombia (SFC)
-   - Superintendencia Nacional de Salud (SNS)
-   - Superintendencia de Sociedades
+- **VEROSIMIL**: Asigna esta etiqueta si la situación descrita es lógicamente posible en el mundo real. No importa si la queja es tonta, extraña o legalmente débil. Si involucra sujetos y acciones que pueden existir y ocurrir, es verosímil.
+- **ABSURDO**: Asigna esta etiqueta si la situación se basa en fantasía, viola las leyes de la física o la lógica, o aplica un concepto a un sujeto fundamentalmente incorrecto (ej. derechos humanos a un animal, acciones legales a un objeto inanimado).
 
-2. Funcionalidades del sistema Justifacil, incluyendo:
-   - Creación de cuenta
-   - Inicio de sesión (login)
-   - Recuperación de contraseña
-   - Radicación de trámites asociados a procesos
-   - Gestión de expedientes
-   - Alertas procesales o de Justifiacil
-   - Glosario de términos jurídicos
-   - Sección de preguntas frecuentes
-   - Contacto con soporte técnico
-   - Temas de observatorio judicial
+**Regla clave para evitar la inversión:** La clasificación es sobre la **posibilidad lógica**, no sobre si el tema corresponde a la SIC, DIMAR, SNS, etc.
+- Un caso sobre la SIC que es imposible -> `ABSURDO`.
+- Un caso que NO es de la SIC pero es posible (ej. "el perro del vecino ladra") -> `VEROSIMIL`.
 
-Responde únicamente con una de estas opciones:
+**Ejemplos:**
 
-- RELACIONADO
-- NO_RELACIONADO
+- Texto: "Quiero entablar una demanda ante la SNS porque mi EPS no me da medicamentos para mi Gato."
+- Clasificación: **ABSURDO**
 
-**Definición de RELACIONADO**: Un texto es relacionado si aborda directamente alguno de los temas o funcionalidades mencionadas, aunque lo haga con sinónimos o lenguaje cotidiano. Debe tener contexto jurídico, procesal o funcional vinculado a los puntos anteriores.
+- Texto: "No puedo entrar a mi cuenta de Justifacil, olvidé la contraseña."
+- Clasificación: **VEROSIMIL**
 
-Ejemplos:
+- Texto: "Quiero demandar al Banco porque no me genera un préstamo ya que soy un extraterrestre."
+- Clasificación: **ABSURDO**
 
-- "¿Cómo radico un proceso ante la SIC?" → RELACIONADO
-- "No puedo entrar a Justifacil con mi contraseña" → RELACIONADO
-- "Qué entidades pueden sancionar a empresas en Colombia" → RELACIONADO
-- "Necesito registrar mi usuario en la plataforma" → RELACIONADO
-- "¿Cuál es el clima hoy en Bogotá?" → NO_RELACIONADO
-- "Estoy buscando ayuda con mi hoja de vida" → NO_RELACIONADO
+- Texto: "Quiero demandar a una empresa ante la SIC porque su logo es feo."
+- Clasificación: **VEROSIMIL** (Es una queja posible, aunque subjetiva y probablemente sin futuro legal).
+
+- Texto: "El perro de mi vecino ladra toda la noche y quiero poner una queja."
+- Clasificación: **VEROSIMIL** (Es un problema real y posible, aunque no sea competencia de las entidades usuales).
+
+- Texto: "Quiero demandar a la luna por seguirme a casa, ¿me ayuda la Dirección de Derecho de Autor?"
+- Clasificación: **ABSURDO**
+
+Responde únicamente con `VEROSIMIL` o `ABSURDO`.
 """
 
 # Efectua la inferencia del modelo.
