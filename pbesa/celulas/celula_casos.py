@@ -54,7 +54,7 @@ def derive(service, text, max_tkns=4096) -> any:
         if not res or res == "":
             res = text
             logging.warning(f"[Celula][Casos]: No obtener una respuesta.")
-        return res
+        return res.replace("*", "").strip()
     except Exception as e:
         logging.error(f"[Celula][Casos]: Error al procesar: {text}")
         logging.error(e)
