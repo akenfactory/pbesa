@@ -914,14 +914,14 @@ class Dialog(ABC):
                 dicriminador = "consulta"
                 per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
                 if per_res and not per_res == "":
-                    if "NO_RELACIONADO" in per_res:
+                    if "ABSURDO" in per_res:
                         dicriminador = None
                         res = msg
             elif es_caso and not es_saludo and not es_consulta:
                 dicriminador = "caso"
                 per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
                 if per_res and not per_res == "":
-                    if "NO_RELACIONADO" in per_res:
+                    if "ABSURDO" in per_res:
                         dicriminador = None
                         res = msg
 
@@ -930,14 +930,14 @@ class Dialog(ABC):
                 dicriminador = "consulta"
                 per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
                 if per_res and not per_res == "":
-                    if "NO_RELACIONADO" in per_res:
+                    if "ABSURDO" in per_res:
                         dicriminador = None
                         res = msg
             elif es_saludo and es_caso and not es_consulta:
                 dicriminador = "caso"
                 per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
                 if per_res and not per_res == "":
-                    if "NO_RELACIONADO" in per_res:
+                    if "ABSURDO" in per_res:
                         dicriminador = None
                         res = msg
 
@@ -948,7 +948,7 @@ class Dialog(ABC):
                 ambiguedad = True
                 per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
                 if per_res and not per_res == "":
-                    if "NO_RELACIONADO" in per_res:
+                    if "ABSURDO" in per_res:
                         dicriminador = None
                         res = msg
                         ambiguedad = False
