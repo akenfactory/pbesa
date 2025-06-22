@@ -27,7 +27,7 @@ from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
-                      celula_generar_documento, celula_expertos, celula_pertinencia)
+                      celula_generar_documento, celula_expertos, celula_pertinencia, celula_extraccion)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -1369,8 +1369,14 @@ class Dialog(ABC):
                     # Verifica recursion
                     if not self.chek_user_interaction(node.children):
                         if self.__visited_nodes > 3:
+                            self.__visited_nodes = 0
                             logging.info(f"[Inferencia]:[Recursion]: Deep limit")
-                            return self.recovery(session['session_id'], "Lo lamento, no puedo responder en este momento")
+                            #return self.recovery(session['session_id'], "Lo lamento, no puedo responder en este momento")
+                            logging.info(f"------------RESET---------------")
+                            self.reset()
+                            self.notify(session['session_id'], "STOP")
+                            res = "Lo lamento, no puedo responder en este momento. Intentelo más tarde desde el inicio."
+                            return "Web", DialogState.START, res, "Web"
                         logging.info(f"[Inferencia]:[Recursion]:[Performativa]: {node.performative}")
                         self.notify(session['session_id'], "efectuando inferencia en profundidad")
                         #return self.do_transition(session, owner, node, query)
@@ -1439,6 +1445,16 @@ class Dialog(ABC):
             logging.error(e)
             return None
 
+    def command_derive(self, command, query, max_tkns=2000) -> str | None:
+        # data_extraction_cel
+        if command == "IDENTIFICAR_VALORES":
+            return celula_datos_identificables.derive(self.__ai_service, query, max_tkns=max_tkns)
+        if command == "EXTRAER_DATOS":
+            return celula_extraccion.derive(self.__ai_service, query, max_tkns=max_tkns)
+        if command == "VERIFICAR_CONSULTA":
+            return celula_consultas.derive(self.__ai_service, query, max_tkns=10)
+        return None
+    
 # --------------------------------------------------------
 # Define Special Dispatch
 # --------------------------------------------------------
