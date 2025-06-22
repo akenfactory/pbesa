@@ -27,7 +27,8 @@ from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
-                      celula_generar_documento, celula_expertos, celula_pertinencia, celula_extraccion)
+                      celula_generar_documento, celula_expertos, celula_pertinencia, celula_extraccion,
+                      celula_evaluador, celula_respuesta, celula_conversador)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -544,6 +545,7 @@ class Dialog(ABC):
         self.__work_memory:list = []
         self.__meta_work_memory:list = []
         self.__system_work_memory:list = []
+        self.__evaluate_work_memory:list = []
         # Define role
         self.__agent_metadata = "Undefined"
         # Define role
@@ -571,7 +573,7 @@ class Dialog(ABC):
             "counter": 0
         }
         # Define recovery message
-        self.RECOVERY_MSG = "Lo lamento, puedes darme más detalles o reformular. O puedes recibir asistencia humana vía correo electrónico al atencion@minjsuticia.com.co o al Whatsapp 321456987."
+        self.RECOVERY_MSG = "Puede darme más detalles o reformular. O si desea puede recibir asistencia humana vía correo electrónico al ministerio@minjsuticia.gov.co"
         # Define vertices list
         self.__vertices = []
         # Define visited nodes
@@ -580,6 +582,10 @@ class Dialog(ABC):
         self.__attemps = 1
         self.__analaizer_work_memory:list = []
         self.__sintetizer_work_memory:list = []
+        # Define production rules
+        self.definitions = None
+        self.rules = None
+        self.__q_attemps = 0
 
     def setup_world(self):
         """ Set up model method """
@@ -901,7 +907,7 @@ class Dialog(ABC):
         eva += 1 if es_consulta else 0
         eva += 1 if es_caso else 0
         
-        msg = "Lo lamento, no puedo ayudarle con su consulta. Dado que no está relacionada con los servicios que presta Justifacil."
+        msg = "No puedo ayudarle con su consulta. Dado que no está relacionada con los servicios que presta Justifacil."
 
         # Verifica los casos
         if eva > 0 and eva < 3:
@@ -943,7 +949,7 @@ class Dialog(ABC):
 
             # Casos ambiguos con consulta y caso
             elif es_consulta and es_caso and not es_saludo:
-                res = "Lo lamento, puede confirmar si ¿Desea que le ayude con una Consulta o una Demanda?"
+                res = "¿Desea que le ayude con una consulta o una demanda?"
             else:
                 ambiguedad = True
                 per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
@@ -1352,6 +1358,22 @@ class Dialog(ABC):
             else:
                 self.notify(session['session_id'], "efectuando inferencia...")
                 logging.info(f"[Inferencia]:[node]: {node.text}")
+
+                if "Evaluar: produccion-" in node.text:
+                    data = {"text": ""}
+                    for item in reversed(self.__work_memory):
+                        if item['role'] == 'user':
+                            data['text'] = item['content']
+                            break
+                    self.notify(session['session_id'], f"continuando díalogo paso a usuario")                    
+                    res = self.evaluate(session, data['text'])                    
+                    if 'Lo lamento' in res:
+                        logging.info(f"------------RESET---------------")
+                        self.reset()
+                        self.notify(session['session_id'], "STOP")
+                        return "Web", DialogState.START, res, "Web"                    
+                    return owner, node.performative, res, owner
+
                 self.__work_memory.append({"role": "system", "content": node.text})
                 logging.info(f"=> !!!!: {query}")
                 logging.info("-----")
@@ -1405,6 +1427,14 @@ class Dialog(ABC):
         """
         self.knowledge = knowledge
 
+    def set_production_knowledge(self, definitions, rules) -> str:
+        """ Set knowledge method
+        :param query: query
+        :return: str
+        """
+        self.definitions = definitions
+        self.rules = rules
+
     def adapt(self, data, profile) -> any:
         """ Adapt method
         :param data: data
@@ -1455,6 +1485,83 @@ class Dialog(ABC):
             return celula_consultas.derive(self.__ai_service, query, max_tkns=10)
         return None
     
+    def parse_conversation(self) -> str:
+        res = ""
+        if self.__evaluate_work_memory and len(self.__evaluate_work_memory) > 0:
+            for item in self.__evaluate_work_memory:
+                if item['role'] == 'user':
+                    res += f"usuario:\n{item['content']}\n"
+                elif item['role'] == 'assistant':
+                    res += f"asistente:\n{item['content']}\n"
+        else:
+            logging.warning("No hay memoria de trabajo para parsear la conversación.")
+        return res.strip()
+
+    def evaluate(self, session, query) -> str:
+        try:
+            self.__evaluate_work_memory.append({"role": "user", "content": query})            
+            # Evalua la conversación
+            logging.info(f"Evaluando consulta: {query}")
+            self.notify(session, "evaluando consulta...")
+            for _ in range(3):
+                logging.info(f"Intento de evaluación: {_+1}")
+                conversacion = self.parse_conversation()
+                result = celula_evaluador.derive(self.__ai_service, self.definitions, self.rules, conversacion, max_tkns=10)
+                if result and not result == "":                           
+                    if "APLICA" in result:
+                        self.notify(session, "aplicando consulta...")
+                        self.__evaluate_work_memory = []
+                        return "Considero que el caso aplica. ¿Desea continuar con el trámite? Responda Sí o No."
+                    elif "RECHAZO" in result:
+                        self.notify(session, "rechazando consulta...")
+                        res_rechazo = celula_respuesta.derive(self.__ai_service, self.definitions, self.rules, conversacion, max_tkns=164)
+                        if res_rechazo and not res_rechazo == "":
+                            if "SIN_COMENTARIOS" in res_rechazo:
+                                continue
+                            self.__evaluate_work_memory = []
+                            return res_rechazo
+                        self.__evaluate_work_memory = []
+                        return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
+                    elif "PREGUNTAR" in result:
+                        self.__q_attemps += 1
+                        if self.__q_attemps > 3:
+                            logging.error("Se alcanzó el límite de intentos de pregunta.")
+                            self.__q_attemps = 0
+                            self.__evaluate_work_memory = []
+                            return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
+                        self.notify(session, "preguntando al usuario...")
+                        conversacion = self.parse_conversation()
+                        res = celula_conversador.derive(self.__ai_service, self.definitions, self.rules, conversacion, max_tkns=200)
+                        if not res and res == "":                            
+                            res = "Lo lamento, no puedo responder en este momento."
+                        res = res.replace("*", " ").strip()
+                        if 'Formulación de la pregunta' in res:
+                            res = res.split('Formulación de la pregunta: ')[1].strip()
+                        elif 'Chain of Thought' in res:
+                            self.__q_attemps = 0
+                            return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
+                        self.__evaluate_work_memory.append({"role": "assistant", "content": res})
+                        return res
+                    else:
+                        logging.warning(f"Resultado inesperado: {result}")
+                        self.__evaluate_work_memory = []
+                        return "Lo lamento, no puedo responder en este momento."
+                else:
+                    logging.warning(f"Resultado de evaluación vacío o nulo: {result}")
+                    if _ < 2:
+                        logging.info("Reintentando evaluación...")
+                        continue
+                    else:
+                        self.__evaluate_work_memory = []
+                        logging.error("No se pudo evaluar la consulta después de 3 intentos.")
+                        return "Lo lamento, no puedo responder en este momento."
+            self.__evaluate_work_memory = []
+            return "Lo lamento, no puedo responder en este momento."
+        except Exception as e:
+            logging.error(f"Error al evaluar la consulta: {query}")
+            logging.error(e)
+            return "Lo lamento, no puedo responder en este momento."
+        
 # --------------------------------------------------------
 # Define Special Dispatch
 # --------------------------------------------------------

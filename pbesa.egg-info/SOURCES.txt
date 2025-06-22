@@ -73,12 +73,15 @@ pbesa.egg-info/top_level.txt
 pbesa/celulas/__init__.py
 pbesa/celulas/celula_casos.py
 pbesa/celulas/celula_consultas.py
+pbesa/celulas/celula_conversador.py
 pbesa/celulas/celula_datos_identificables.py
+pbesa/celulas/celula_evaluador.py
 pbesa/celulas/celula_expertos.py
 pbesa/celulas/celula_extraccion.py
 pbesa/celulas/celula_generar_documento.py
 pbesa/celulas/celula_pertinencia.py
 pbesa/celulas/celula_preguntas.py
+pbesa/celulas/celula_respuesta.py
 pbesa/celulas/celula_saludos.py
 pbesa/celulas/celula_simulador_ciudadano.py
 pbesa/celulas/data_extraction_cel.py
