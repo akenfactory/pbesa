@@ -28,7 +28,7 @@ from pbesa.social.dialog import (
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
                       celula_generar_documento, celula_expertos, celula_pertinencia, celula_extraccion,
-                      celula_evaluador, celula_respuesta, celula_conversador)
+                      celula_evaluador, celula_respuesta, celula_conversador, celula_parafraseo)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -565,6 +565,7 @@ class Dialog(ABC):
         self.__deep_limit = 9
         # Define knowledge
         self.knowledge = None
+        self.special_knowledge = None
         # Define point recovery
         self.__recovery = {
             "owner": "Web",
@@ -1426,6 +1427,13 @@ class Dialog(ABC):
         :return: str
         """
         self.knowledge = knowledge
+    
+    def set_special_knowledge(self, knowledge) -> str:
+        """ Set knowledge method
+        :param query: query
+        :return: str
+        """
+        self.special_knowledge = knowledge
 
     def set_production_knowledge(self, definitions, rules) -> str:
         """ Set knowledge method
@@ -1483,6 +1491,8 @@ class Dialog(ABC):
             return celula_extraccion.derive(self.__ai_service, query, max_tkns=max_tkns)
         if command == "VERIFICAR_CONSULTA":
             return celula_consultas.derive(self.__ai_service, query, max_tkns=10)
+        if command == "EVALUAR_CONSULTA":
+            return celula_parafraseo.derive(self.__ai_service, self.special_knowledge, query, max_tkns=max_tkns)
         return None
     
     def parse_conversation(self) -> str:
@@ -1630,6 +1640,7 @@ class SpecialDispatch():
         Response.
         @param data Event data 
         """
+        response = None
         if data and not data['dto']['session']['team'] == "Funcionalidades":
             logging.info("Despachando por descripcion...")
             options = ""
@@ -1673,7 +1684,7 @@ class SpecialDispatch():
                     break
             if not select_agent:
                 logging.info("=> No se seleccionó ningun agente")
-            return select_agent
+            return select_agent, response
         else:
             logging.info("Despachando por descripcion...")
             options = ""
@@ -1777,4 +1788,4 @@ class SpecialDispatch():
 
             self.kusto_close()
             self.__meta_work_memory = []
-            return select_agent
+            return select_agent, response

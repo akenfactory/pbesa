@@ -543,6 +543,7 @@ class LLMDispatcherDelegate(Action):
         @param data Event data 
         """
         try:
+            response = None
             logging.info('Assign to agent...')
             session_id = data['dto']['session']['session_id'] if 'session' in data['dto'] else None
             agent_list = self.agent.get_agent_list()
@@ -580,7 +581,7 @@ class LLMDispatcherDelegate(Action):
                 select_agent = self.manual_selection(data['dto'])
                 # Check if agent was selected
                 if not select_agent:
-                    select_agent = self.agent.special_dispatch(data)
+                    select_agent, response = self.agent.special_dispatch(data)
                 # Check if agent was selected        
                 if select_agent:
                     logging.info(f'The agent {select_agent} will be assigned')
@@ -597,6 +598,8 @@ class LLMDispatcherDelegate(Action):
                                     'gateway': data['gateway'],
                                     'dtoList': []
                                 }
+                                if response:
+                                    data['dto']['rq_query'] = response
                                 self.adm.send_event(ag, 'task', data['dto'])
                                 self.__rewier[ag] = 0
                                 exit = True
