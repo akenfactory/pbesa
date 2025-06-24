@@ -28,7 +28,8 @@ from pbesa.social.dialog import (
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
                       celula_generar_documento, celula_expertos, celula_pertinencia, celula_extraccion,
-                      celula_evaluador, celula_respuesta, celula_conversador, celula_parafraseo)
+                      celula_evaluador, celula_respuesta, celula_conversador, celula_parafraseo, celula_cuestionador,
+                      celula_instruccion, celula_generar_caso, celula_simulador_ciudadano)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -1493,6 +1494,14 @@ class Dialog(ABC):
             return celula_consultas.derive(self.__ai_service, query, max_tkns=10)
         if command == "EVALUAR_CONSULTA":
             return celula_parafraseo.derive(self.__ai_service, self.special_knowledge, query, max_tkns=max_tkns)
+        if command == "GENERAR_PREGUNTA":
+            return celula_cuestionador.derive(self.__ai_service, query, max_tkns=max_tkns)
+        if command == "INSTRUCCION":
+            return celula_instruccion.derive(self.__ai_service,  query, max_tkns=max_tkns)
+        if command == "GENERAR_CASO":
+            return celula_generar_caso.derive(self.__ai_service, self.definitions, self.rules, max_tkns=max_tkns)
+        if command == "CONTINUAR_DIALOGO":
+            return celula_simulador_ciudadano.derive(self.__ai_service, query, max_tkns=max_tkns)
         return None
     
     def parse_conversation(self) -> str:
