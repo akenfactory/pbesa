@@ -1755,7 +1755,7 @@ class SpecialDispatch():
                 major_id, response, score = self.retrieval(query)
                 if 'glosario' in major_id.lower():
                     major_id = 'glosario'
-                if 'inicial' in major_id.lower():
+                elif 'inicial' in major_id.lower():
                     major_id = 'portal'
                 else:
                     major_id_split = major_id.split("_")
