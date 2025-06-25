@@ -837,6 +837,8 @@ class Dialog(ABC):
         
         if attemps > 1:
             saludo = "NO_SALUDO"
+        
+        elif attemps > 2:
 
             self.__sintetizer_work_memory:list = [{"role": "system", "content": SINTETIZER_PROMPT}]
 
@@ -1751,10 +1753,15 @@ class SpecialDispatch():
                     logging.info("=> No se seleccionó ningun agente")
 
                 major_id, response, score = self.retrieval(query)
-                major_id_split = major_id.split("_")
-                major_id = major_id_split[0] if len(major_id_split) > 0 else major_id
-                major_id_split = major_id.split("-")
-                major_id = major_id_split[0] if len(major_id_split) > 0 else major_id
+                if 'glosario' in major_id.lower():
+                    major_id = 'glosario'
+                if 'inicial' in major_id.lower():
+                    major_id = 'portal'
+                else:
+                    major_id_split = major_id.split("_")
+                    major_id = major_id_split[0] if len(major_id_split) > 0 else major_id
+                    major_id_split = major_id.split("-")
+                    major_id = major_id_split[1] if len(major_id_split) > 0 else major_id
 
                 compare_llm = 0
                 compare_index = 0
@@ -1797,4 +1804,5 @@ class SpecialDispatch():
 
             self.kusto_close()
             self.__meta_work_memory = []
+            self.major_id = None
             return select_agent, response
