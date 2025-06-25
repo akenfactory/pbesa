@@ -589,6 +589,7 @@ class Dialog(ABC):
         self.rules = None
         self.__q_attemps = 0
 
+        
     def setup_world(self):
         """ Set up model method """
         # Define role
@@ -834,12 +835,16 @@ class Dialog(ABC):
             
         self.__analaizer_work_memory:list = [{"role": "system", "content": ANALIZER_PROMPT}]
         
+        es_verificacion = False
+        if len(messages) >= 3:
+            last_message = messages[-2]['text']
+            es_verificacion = '¿Desea que le ayude con una consulta o una demanda?' in last_message
         
-        if attemps > 1:
+        if attemps > 1 and not es_verificacion:
+            saludo = "NO_SALUDO"        
+        elif attemps > 2 or es_verificacion:
+            
             saludo = "NO_SALUDO"
-        
-        elif attemps > 2:
-
             self.__sintetizer_work_memory:list = [{"role": "system", "content": SINTETIZER_PROMPT}]
 
             cont = 0

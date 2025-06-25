@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='pbesa',
-    version='4.0.30',
+    version='4.0.31',
     packages=find_packages(),
     install_requires=[
         'pymongo>=4.6.3',
