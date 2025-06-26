@@ -334,7 +334,7 @@ class AugmentedGeneration(ABC):
             traceback.print_exc()
             logging.info(f"------------RESET---------------")
             self.reset()
-            return "Lo lamento, no puedo responder en este momento"
+            return DialogState.ERROR
         
     def derive(self, query, max_tokens=4096, temperature=0, top_p=0.9) -> str:
         """ Generate method
@@ -361,7 +361,7 @@ class AugmentedGeneration(ABC):
             traceback.print_exc()
             logging.info(f"------------RESET---------------")
             self.reset()
-            return "Lo lamento, no puedo responder en este momento"
+            return DialogState.ERROR
 
     def get_role(self) -> Role:
         """ Get role method
@@ -575,7 +575,7 @@ class Dialog(ABC):
             "counter": 0
         }
         # Define recovery message
-        self.RECOVERY_MSG = "Puede darme más detalles o reformular. O si desea puede recibir asistencia humana vía correo electrónico al ministerio@minjsuticia.gov.co"
+        self.RECOVERY_MSG = "Lo lamento, no puedo responder en este momento. O si desea puede recibir asistencia humana vía correo electrónico al ministerio@minjsuticia.gov.co"
         # Define vertices list
         self.__vertices = []
         # Define visited nodes
@@ -802,6 +802,7 @@ class Dialog(ABC):
     
     def recovery(self, session_id, query):
         try:
+            ''' 
             logging.info("\n\n\n")
             logging.info(f"------------RECOVERY---------------")
             logging.info("\n\n\n")    
@@ -818,10 +819,17 @@ class Dialog(ABC):
                 self.reset()
                 self.notify(session_id, "STOP") 
                 return "Web", DialogState.START, self.RECOVERY_MSG, "Web"
+            '''
+            logging.info(f"------------RESET---------------")
+            logging.info(f"Recovery from: {self.__recovery['performative']}")
+            self.reset()
+            self.notify(session_id, "STOP")
+            return "Web", DialogState.START, DialogState.ERROR, "Web"
         except Exception as e:
             logging.error(f"Error en la recuperación: {e}")
-            msg = "Lo lamento, no puedo responder en este momento."
+            msg = DialogState.ERROR
             return "Web", DialogState.START, msg, "Web"
+    
         
     def stage_one_classification(self, session_id, messages, attemps, query):
         """ Stage one classification """
@@ -1042,7 +1050,7 @@ class Dialog(ABC):
                         self.reset()
                         self.notify(session['session_id'], "STOP") 
                         return "Web", DialogState.START, res, "Web"
-                    query = res                
+                    query = res
                     #--------------------------
                     # Obtiene los hijos del 
                     # nodo
@@ -1212,7 +1220,7 @@ class Dialog(ABC):
             logging.info(f"------------RESET---------------")
             self.reset()
             self.notify(session['session_id'], "STOP")
-            return owner, DialogState.START, "Lo lamento, no puedo responder en este momento", owner
+            return owner, DialogState.START, DialogState.ERROR, owner
 
     def chek_user_interaction(self, children):
         """ Check user interaction method
@@ -1285,7 +1293,7 @@ class Dialog(ABC):
                                 if 'team-response' in conversation:
                                     res = conversation['team-response']
                                 else:
-                                    res = "Lo lamento, no puedo responder en este momento"
+                                    res = DialogState.ERROR
                                     logging.info("[Node]:[Action]:[Call]:[Terminal]:[Consulta]: No hay respuesta de equipo")
                                 logging.info("[Node]:[Action]:[Call]:[Terminal]:[Consulta]: Especialistas")                            
                         else:
@@ -1402,11 +1410,10 @@ class Dialog(ABC):
                         if self.__visited_nodes > 3:
                             self.__visited_nodes = 0
                             logging.info(f"[Inferencia]:[Recursion]: Deep limit")
-                            #return self.recovery(session['session_id'], "Lo lamento, no puedo responder en este momento")
                             logging.info(f"------------RESET---------------")
                             self.reset()
                             self.notify(session['session_id'], "STOP")
-                            res = "Lo lamento, no puedo responder en este momento. Intentelo más tarde desde el inicio."
+                            res = DialogState.ERROR
                             return "Web", DialogState.START, res, "Web"
                         logging.info(f"[Inferencia]:[Recursion]:[Performativa]: {node.performative}")
                         self.notify(session['session_id'], "efectuando inferencia en profundidad")
@@ -1427,7 +1434,7 @@ class Dialog(ABC):
             logging.info(f"------------RESET---------------")
             self.reset()
             self.notify(session['session_id'], "STOP")
-            return owner, DialogState.START, "Lo lamento, no puedo responder en este momento", owner
+            return owner, DialogState.START, DialogState.ERROR, owner
 
     def set_knowledge(self, knowledge) -> str:
         """ Set knowledge method
@@ -1559,7 +1566,7 @@ class Dialog(ABC):
                         conversacion = self.parse_conversation()
                         res = celula_conversador.derive(self.__ai_service, self.definitions, self.rules, conversacion, max_tkns=200)
                         if not res and res == "":                            
-                            res = "Lo lamento, no puedo responder en este momento."
+                            res = DialogState.ERROR
                         res = res.replace("*", " ").strip()
                         if 'Formulación de la pregunta' in res:
                             res = res.split('Formulación de la pregunta: ')[1].strip()
@@ -1571,7 +1578,7 @@ class Dialog(ABC):
                     else:
                         logging.warning(f"Resultado inesperado: {result}")
                         self.__evaluate_work_memory = []
-                        return "Lo lamento, no puedo responder en este momento."
+                        return DialogState.ERROR
                 else:
                     logging.warning(f"Resultado de evaluación vacío o nulo: {result}")
                     if _ < 2:
@@ -1580,13 +1587,13 @@ class Dialog(ABC):
                     else:
                         self.__evaluate_work_memory = []
                         logging.error("No se pudo evaluar la consulta después de 3 intentos.")
-                        return "Lo lamento, no puedo responder en este momento."
+                        return DialogState.ERROR
             self.__evaluate_work_memory = []
-            return "Lo lamento, no puedo responder en este momento."
+            return DialogState.ERROR
         except Exception as e:
             logging.error(f"Error al evaluar la consulta: {query}")
             logging.error(e)
-            return "Lo lamento, no puedo responder en este momento."
+            return DialogState.ERROR
         
 # --------------------------------------------------------
 # Define Special Dispatch

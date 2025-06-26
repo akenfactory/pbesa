@@ -29,6 +29,7 @@ class DialogState:
     ASK_CONFIRMATION_NEGATIVE = "ask confirmation negative"
     ASK_CONFIRMATION_POSITIVE = "ask confirmation_positive"
     END = "end"
+    ERROR = "Lo lamento, no puedo responder en este momento, intente más tarde."
 
 #------------------------------------------
 # Define Node class
