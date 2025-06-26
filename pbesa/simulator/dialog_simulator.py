@@ -47,69 +47,48 @@ USER_PROMPT = """
 Demanda:
 %s
 """
-class UserSimulator(object):
+
+class DialogSimulator(object):
     """
     Clase que simula un usuario demandante ante entes de control.
     """
 
-    class __UserSimulator:
+    def __init__(self):
+        self.iteracion = 1
+        self.work_memory = []
+        self.service = None
 
-        def __init__(self, service):
-            self.iteracion = 1
-            self.work_memory = []
-            self.service = service
-
-        # Efectua la inferencia del modelo.
-        def evaluate(self, text, max_tkns=2000, reset=False) -> any:
-            try:
-                if reset:
-                    self.iteracion = 1
-                    self.work_memory = []
-                logging.info("\n")
-                logging.info(f"Procesando: {text} - Iteración: {self.iteracion}")
-                if self.iteracion == 1:
-                    prompt  = SYSTEM_PROMPT
-                    self.work_memory.append({"role": "system", "content": SYSTEM_PROMPT})    
-                    prompt  = USER_PROMPT % text
-                    self.work_memory.append({"role": "user", "content": prompt})
-                else:
-                    self.work_memory.append({"role": "user", "content": text})
-                res = self.service.generate(self.work_memory, max_tkns)
-                self.work_memory.append({"role": "assistant", "content": res})
-                self.iteracion += 1
-                logging.info(f"Respuesta: {res}")
-                logging.info("\n")
-                if not res or res == "":
-                    res = text
-                    logging.warning(f"No obtener una respuesta.")
-                return res
-            except Exception as e:
-                logging.error(f"Error al procesar: {text}")
-                logging.error(e)
-                return None
+    # Efectua la inferencia del modelo.
+    def evaluate(self, text, max_tkns=2000, reset=False) -> any:
+        try:
+            if reset:
+                self.iteracion = 1
+                self.work_memory = []
+            logging.info("\n")
+            logging.info(f"Procesando: {text} - Iteración: {self.iteracion}")
+            if self.iteracion == 1:
+                prompt  = SYSTEM_PROMPT
+                self.work_memory.append({"role": "system", "content": SYSTEM_PROMPT})    
+                prompt  = USER_PROMPT % text
+                self.work_memory.append({"role": "user", "content": prompt})
+            else:
+                self.work_memory.append({"role": "user", "content": text})
+            res = self.service.generate(self.work_memory, max_tkns)
+            self.work_memory.append({"role": "assistant", "content": res})
+            self.iteracion += 1
+            logging.info(f"Respuesta: {res}")
+            logging.info("\n")
+            if not res or res == "":
+                res = text
+                logging.warning(f"No obtener una respuesta.")
+            return res
+        except Exception as e:
+            logging.error(f"Error al procesar: {text}")
+            logging.error(e)
+            return None
     
-    # Singleton instance
-    instance = None
-
-    def __new__(cls, service) -> object:
-        """ Create new instance """
-        if not UserSimulator.instance:
-            UserSimulator.instance = UserSimulator.__UserSimulator(service)
-        return UserSimulator.instance
+    def derive(self, text, max_tkns=2000, reset=False) -> any:
+        return self.evaluate(text, max_tkns=max_tkns, reset=reset)
     
-    def __getattr__(self, name: str) -> object:
-        """ Get attribute
-        @param name Attribute name
-        @return object Attribute
-        """
-        return getattr(self.instance, name)
-    
-    def __setattr__(self, name:str) -> object:
-        """ Set attribute
-        @param name Attribute name
-        @return object Attribute
-        """
-        return setattr(self.instance, name)
-
-def derive(service, text, max_tkns=2000, reset=False) -> any:
-    return UserSimulator(service).evaluate(text, max_tkns=max_tkns, reset=reset)
+    def set_service(self, service):
+        self.service = service

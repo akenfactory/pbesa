@@ -19,7 +19,7 @@ Se te proporcionarán **definiciones clave** y **reglas específicas** que debes
 
 **FORMATO DE SALIDA:**
 
-Se conciso y directo. El caso debe tener menos de 100 palabras.
+Se conciso y directo. El caso debe tener menos de 50 palabras.
 
 Simula la descripción del caso desde la perspectiva de la persona afectada, incluyendo los detalles necesarios para comprender la situación y la entidad jurisdiccional que debería intervenir.
 
