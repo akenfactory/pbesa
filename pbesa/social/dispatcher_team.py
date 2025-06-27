@@ -592,7 +592,8 @@ class LLMDispatcherDelegate(Action):
                         # Chec if the agent is instance of AugmentedGeneration
                         if isinstance(agent_obj, Dialog):
                             # Get the role
-                            if select_agent == agent_obj.id:
+                            tipo = "-".join(agent_obj.id.split('-')[0:-1])
+                            if select_agent == tipo:
                                 logging.info(f'The agent {ag} is assigned')
                                 self.agent.get_request_dict()[ag] = {
                                     'gateway': data['gateway'],
@@ -603,7 +604,7 @@ class LLMDispatcherDelegate(Action):
                                 self.adm.send_event(ag, 'task', data['dto'])
                                 self.__rewier[ag] = 0
                                 exit = True
-                                self.planilla[session_id] = select_agent
+                                self.planilla[session_id] = agent_obj.id
                             else:
                                 logging.debug('The agent does not match the role')
                                 self.adm.send_event(agent_obj.get_controller(), 'notify', ag)

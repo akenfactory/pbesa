@@ -38,7 +38,7 @@ Responde únicamente con:
 """
 
 # Efectua la inferencia del modelo.
-def derive(service, text, max_tkns=4096) -> any:
+def derive(service, text, max_tkns=2000) -> any:
     try:
         logging.info(f"Procesando: {text}")
         tmp_work_memory = []

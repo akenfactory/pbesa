@@ -981,6 +981,12 @@ class Dialog(ABC):
                 res = query
         else:
             ambiguedad = True
+            per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
+            if per_res and not per_res == "":
+                if "ABSURDO" in per_res:
+                    dicriminador = None
+                    res = msg
+                    ambiguedad = False
 
         if ambiguedad:    
             logging.info("[Stage-1]: Respuesta con ambiguedad")
@@ -1665,88 +1671,31 @@ class SpecialDispatch():
         Response.
         @param data Event data 
         """
-        response = None
-        if data and not data['dto']['session']['team'] == "Funcionalidades":
-            logging.info("Despachando por descripcion...")
-            options = ""
-            cont = 1
-            agent_options = {}
-            for agent, item in self.__options_dict.items():
-                agent_options[cont] = agent
-                options += f"{cont}) {item}\n"
-                cont += 1
-            query = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
-            prompt = CLASSIFICATION_PROMPT % options
-            logging.info(f"Query: {query},\n Options:\n{options}")
-            self.__meta_work_memory.append({"role": "system", "content": prompt})
-            
+        try:
+            response = None
+            if data and not data['dto']['session']['team'] == "Funcionalidades":
+                logging.info("Despachando por descripcion...")
+                options = ""
+                cont = 1
+                agent_options = {}
+                for agent, item in self.__options_dict.items():
+                    agent_options[cont] = agent
+                    options += f"{cont}) {item}\n"
+                    cont += 1
+                query = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
+                prompt = CLASSIFICATION_PROMPT % options
+                logging.info(f"Query: {query},\n Options:\n{options}")
+                self.__meta_work_memory.append({"role": "system", "content": prompt})            
+                user_prompt = f"""
+                Texto: "%s"
 
-            user_prompt = f"""
-            Texto: "%s"
-
-            Respuesta:
-            """ % query
-            self.__meta_work_memory.append({"role": "user", "content": user_prompt})
-            
-            res = self.__ai_service.generate(self.__meta_work_memory, max_tokens=10)
-            logging.info(f"Thought: {res}")
-            self.__meta_work_memory = []
-            res = self.get_text(res)
-            select_agent = None
-            compare = re.findall(r'\d+', res)
-            print(f"Compare: {compare}")
-            if len(compare) > 0:
-                compare = compare[0]
-            else:
-                compare = res
-            compare = compare.strip()
-            print(f"Compare: {compare}")
-            for option in range(1, cont+1):
-                print(f"Option: {option} - Compare: {compare}")
-                if str(option) == compare:                
-                    select_agent = agent_options[option]
-                    logging.info(f"Descripcion del agente seleccionado: {select_agent}")
-                    break
-            if not select_agent:
-                logging.info("=> No se seleccionó ningun agente")
-            return select_agent, response
-        else:
-            logging.info("Despachando por descripcion...")
-            options = ""
-            cont = 1
-
-            selection_options = {}
-
-            agent_options = {}
-            for agent, item in self.__options_dict.items():
-                agent_options[cont] = agent
-                options += f"{cont}) {item}\n"
-                cont += 1
-                selection_options[agent] = 0
-
-            query = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
-            prompt = CLASSIFICATION_PROMPT % options
-            logging.info(f"Query: {query},\n Options:\n{options}")
-            self.__meta_work_memory.append({"role": "system", "content": prompt})
-            
-
-            user_prompt = f"""
-            Texto: "%s"
-
-            Respuesta:
-            """ % query
-            self.__meta_work_memory.append({"role": "user", "content": user_prompt})
-
-            self.kusto_open()
-
-            attemps = 1
-            exit = False
-            while attemps <= 3 and not exit:
-                logging.info(f"Intento de selección de agente: {attemps}")
-
+                Respuesta:
+                """ % query
+                self.__meta_work_memory.append({"role": "user", "content": user_prompt})
+                
                 res = self.__ai_service.generate(self.__meta_work_memory, max_tokens=10)
                 logging.info(f"Thought: {res}")
-                
+                self.__meta_work_memory = []
                 res = self.get_text(res)
                 select_agent = None
                 compare = re.findall(r'\d+', res)
@@ -1765,58 +1714,43 @@ class SpecialDispatch():
                         break
                 if not select_agent:
                     logging.info("=> No se seleccionó ningun agente")
-
-                major_id, response, score = self.retrieval(query)
-                if 'glosario' in major_id.lower():
-                    major_id = 'glosario'
-                elif 'inicial' in major_id.lower():
-                    major_id = 'portal'
-                else:
-                    major_id_split = major_id.split("_")
-                    major_id = major_id_split[0] if len(major_id_split) > 0 else major_id
-                    major_id_split = major_id.split("-")
-                    major_id = major_id_split[1] if len(major_id_split) > 0 else major_id
-
-                compare_llm = 0
-                compare_index = 0
-                idex_result = None
-
-                # Check if the selected agent is in the retrieval response
-                if major_id and major_id in select_agent:
-                    logging.info(f"Se seleccionó el agente: {select_agent} con score: {score}")
-                    exit = True
-                    continue
-                else:
-                    for ag in selection_options:
-                        if select_agent and select_agent in ag:
-                            selection_options[ag] += 1
-                            compare_llm += 1 
-                        if major_id and major_id in ag:
-                            selection_options[ag] += 1
-                            compare_index += 1
-                            idex_result = ag
-
-                attemps += 1
-
-            if attemps > 3:
-                logging.info("No se pudo seleccionar un agente, identificando el agente con mayor score...")
+                return select_agent, response
+            else:
+                logging.info("Despachando por indice...")
+                query = data['dto']['text'] if data and 'dto' in data and data['dto']['text'] is not None else ''
+                options = ""
+                cont = 1
                 
-                if compare_llm == compare_index:
-                    logging.warning("Dando prioridad al resultado del indice")
-                    select_agent = idex_result
-                else:
-                    logging.info("Evaluando los scores de los agentes...")
-                    major_id = ""
-                    max_score = 0
-                    for ag, score in selection_options.items():
-                        if score > max_score:
-                            max_score = score
-                            major_id = ag
-                    if major_id:
-                        select_agent = major_id
-                        logging.info(f"Se seleccionó el agente: {select_agent} con score: {max_score}") 
+                # Considera las opciones
+                agent_options = []
+                for agent, _ in self.__options_dict.items():
+                    key = "-".join(agent.split("-")[0:-1])
+                    if not key in agent_options:
+                        agent_options.append(key)
 
-            self.kusto_close()
+                # Efecua consulta al indice
+                self.kusto_open()
+                major_id, response, score = self.retrieval(query)
+                self.kusto_close()
+                logging.info(f"Major ID: {major_id}, Response: {response}, Score: {score}")
+                
+                # Obtiene el tipo de agente
+                select_agent = None            
+                if major_id:
+                    major_id = "-".join(major_id.split("-")[0:-1])
+                    for ag in agent_options:
+                        if major_id in ag:
+                            select_agent = ag
+                            break
+                else:
+                    logging.warning("No se encontró un agente asociado al query")
+
+                # Si no se encontró un agente, se retorna None
+                self.__meta_work_memory = []
+                self.major_id = None
+                return select_agent, response
+        except Exception as e:
+            logging.error(f"Error en el despacho especial: {e}")
             self.__meta_work_memory = []
             self.major_id = None
-            return select_agent, response
+            return None, None

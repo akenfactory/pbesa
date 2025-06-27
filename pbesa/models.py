@@ -146,7 +146,7 @@ class AzureInference(AIService):
             response = self.model.complete(
                 messages= work_memory,
                 model= self.deployment,
-                max_tokens= self.max_tokens
+                max_tokens= max_tokens
             )
             res = response.choices[0].message.content
             if not res or res == "" or res == "ERROR":
@@ -160,7 +160,7 @@ class AzureInference(AIService):
             err = str(e) + " - " + trace_err
             logging.info(f"Error en la respuesta de Azure: {err}")
         if again:
-            if self.model_conf['SUBSTITUDE_DEPLOYMENT_NAME'] == "Llama-3.3-70B-Instruct":
+            if self.model_conf['SUBSTITUDE_2_DEPLOYMENT_NAME'].lower() == "llama-3.3-70b-instruct":
                 logging.info("\n\n\n")
                 logging.info("----------------------------------------")
                 logging.info("Sustitudo atiendendo Llama-3.3-70B-Instruct")
@@ -170,8 +170,8 @@ class AzureInference(AIService):
                     logging.info("........................................\n\n\n")
                     response = self.model.complete(
                         messages= work_memory,
-                        model =self.model_conf['SUBSTITUDE_DEPLOYMENT_NAME'],
-                        max_tokens=self.model_conf['MAX_TOKENS']
+                        model =self.model_conf['SUBSTITUDE_2_DEPLOYMENT_NAME'],
+                        max_tokens=max_tokens
                     )
                     logging.info("----------------------------------------")
                     logging.info("\n\n\n")                    
@@ -182,7 +182,7 @@ class AzureInference(AIService):
                     logging.info(f"Error en la respuesta de Azure: {err2}")
                     logging.info("----------------------------------------")
                     logging.info("\n\n\n")                    
-                    raise e2
+                    return ""
         logging.error("\n\n\n****************************************")
         logging.error("No se pudo generar una respuesta válida.")
         return ""
@@ -237,7 +237,7 @@ class AzureOpenAIInference(AIService):
             # Si no se especifica Retry-After, usar backoff exponencial
             self.wait_time = 2 ** (self.wait_time // 60)
         
-    def generate(self, work_memory, max_tokens=4096, temperature=0, top_p=0.9) -> str:
+    def generate(self, work_memory, max_tokens=2000, temperature=0, top_p=0.9) -> str:
         again = False
         try:            
             if self.main_model_enable:
@@ -303,13 +303,13 @@ class AzureOpenAIInference(AIService):
                 logging.warning("Modelo principal en espera. Intentando con el modelo de sustitución-1...")
                 if self.substitude_1_model is None:
                     raise ValueError("No se ha configurado un modelo de sustitución-1.")
-                return self.substitude_1_model.generate(work_memory)                
+                return self.substitude_1_model.generate(work_memory, max_tokens=max_tokens)                
             except Exception as e:
                 try:
                     logging.warning("Modelo principal en espera. Intentando con el modelo de sustitución-2...")
                     if self.substitude_2_model is None:
                         raise ValueError("No se ha configurado un modelo de sustitución-2.")
-                    return self.substitude_2_model.generate(work_memory)
+                    return self.substitude_2_model.generate(work_memory, max_tokens=max_tokens)
                 except Exception as e2:
                     trace_err = traceback.format_exc()
                     err = str(e2) + " - " + trace_err
