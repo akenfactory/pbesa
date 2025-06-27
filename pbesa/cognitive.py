@@ -1737,7 +1737,7 @@ class SpecialDispatch():
                 # Obtiene el tipo de agente
                 select_agent = None            
                 if major_id:
-                    major_id = "-".join(major_id.split("-")[0:-1])
+                    major_id = major_id.split("_")[0]
                     for ag in agent_options:
                         if major_id in ag:
                             select_agent = ag
