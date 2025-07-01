@@ -1413,14 +1413,14 @@ class Dialog(ABC):
                 if not node.is_terminal:
                     # Verifica recursion
                     if not self.chek_user_interaction(node.children):
-                        if self.__visited_nodes > 3:
-                            self.__visited_nodes = 0
-                            logging.info(f"[Inferencia]:[Recursion]: Deep limit")
-                            logging.info(f"------------RESET---------------")
-                            self.reset()
-                            self.notify(session['session_id'], "STOP")
-                            res = DialogState.ERROR
-                            return "Web", DialogState.START, res, "Web"
+                        #if self.__visited_nodes > 3:
+                        #    self.__visited_nodes = 0
+                        #    logging.info(f"[Inferencia]:[Recursion]: Deep limit")
+                        #    logging.info(f"------------RESET---------------")
+                        #    self.reset()
+                        #    self.notify(session['session_id'], "STOP")
+                        #    res = DialogState.ERROR
+                        #    return "Web", DialogState.START, res, "Web"
                         logging.info(f"[Inferencia]:[Recursion]:[Performativa]: {node.performative}")
                         self.notify(session['session_id'], "efectuando inferencia en profundidad")
                         #return self.do_transition(session, owner, node, query)
