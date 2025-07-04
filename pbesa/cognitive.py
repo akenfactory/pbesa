@@ -29,7 +29,7 @@ from pbesa.social.dialog import (
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
                       celula_generar_documento, celula_expertos, celula_pertinencia, celula_extraccion,
                       celula_evaluador, celula_respuesta, celula_conversador, celula_parafraseo, celula_cuestionador,
-                      celula_instruccion, celula_generar_caso)
+                      celula_instruccion, celula_generar_caso, celula_demanda)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -830,85 +830,89 @@ class Dialog(ABC):
             msg = DialogState.ERROR
             return "Web", DialogState.START, msg, "Web"
     
-        
-    def stage_one_classification(self, session_id, messages, attemps, query):
-        """ Stage one classification """
-        res = ""
-        #evaluating = True
-        dicriminador = None
-        logging.info(f"------------Flujo de excepcion---------------")
-        self.notify(session_id, "identificando intención...")        
-        logging.info(f"Intento: {attemps}") 
-        
-            
+
+    def stage_one_check(self, session_id, messages, attemps, query):
+        aclaracion_fired = False
+        for message in messages:
+            if not message['user'] and '¿Desea que le ayude con una consulta o una demanda?' in message['text']:
+                aclaracion_fired = True
+                break
+        return aclaracion_fired
+
+    def stage_one_analizer(self, session_id, messages, attemps, query):
         self.__analaizer_work_memory:list = [{"role": "system", "content": ANALIZER_PROMPT}]
+        user_prompt = f"""
+        user: {query}Texto: 
+        "%s"
+
+        Respuesta:        
+        """
+        self.__analaizer_work_memory.append({"role": "user", "content": user_prompt})
+
+        logging.info("\n\n\n--------------ANALIZER------------------")
+        logging.info("\n%s", json.dumps(self.__analaizer_work_memory, indent=4))
+        logging.info("------------------------------------------\n\n\n")
+        res = self.__ai_service.generate(self.__analaizer_work_memory, max_tokens=50)
+        logging.info(f"[Stage-1][Thought]: {res}")
+        self.__analaizer_work_memory.append({"role": "assistant", "content": res})                
+        self.__sintetizer_work_memory.append({"role": "assistant", "content": res})
+        return res
+
+    def stage_one_sintetizer(self, session_id, messages, attemps, query, es_demanda):
         
-        es_verificacion = False
-        if len(messages) >= 3:
-            last_message = messages[-2]['text']
-            es_verificacion = '¿Desea que le ayude con una consulta o una demanda?' in last_message
-        
-        if attemps > 1 and not es_verificacion:
-            saludo = "NO_SALUDO"        
-        elif attemps > 2 or es_verificacion:
-            
-            saludo = "NO_SALUDO"
-            self.__sintetizer_work_memory:list = [{"role": "system", "content": SINTETIZER_PROMPT}]
+        self.__sintetizer_work_memory:list = [{"role": "system", "content": SINTETIZER_PROMPT}]
 
-            cont = 0
-            for message in messages:
-                if message['user']:
-                    self.__analaizer_work_memory.append({"role": "user", "content": message['text']})
-                    
-                    if cont == 0:
-                        msg = f"""
-                        Texto: 
-                        "%s"
+        cont = 0
+        for message in messages:
+            if message['user']:
+                self.__analaizer_work_memory.append({"role": "user", "content": message['text']})
+                
+                if cont == 0:
+                    msg = f"""
+                    Texto: 
+                    "%s"
 
-                        Respuesta:
-                        """ % message['text']
-                    else:
-                        msg = message['text']
-
-                    self.__sintetizer_work_memory.append({"role": "user", "content": msg})
+                    Respuesta:
+                    """ % message['text']
                 else:
-                    self.__analaizer_work_memory.append({"role": "assistant", "content": message['text']})
-                    self.__sintetizer_work_memory.append({"role": "assistant", "content": message['text']})
+                    msg = message['text']
 
-            #self.__analaizer_work_memory.append({"role": "user", "content": query})
-            #self.__sintetizer_work_memory.append({"role": "user", "content": query})
-        
-            # Desde la seegunda iteeraccion de la
-            # conversacion, se utiliza el sintentizador
-            logging.info("\n\n\n--------------SINTETIZER------------------")
-            logging.info("\n%s", json.dumps(self.__sintetizer_work_memory, indent=4))
-            logging.info("\n\n\n")
-            query = self.__ai_service.generate(self.__sintetizer_work_memory, max_tokens=50)
-            res = self.get_text(query)
-            query = res
-            logging.info(f"[Stage-1][Sintetizer][Thought]: {query}")
+                self.__sintetizer_work_memory.append({"role": "user", "content": msg})
+            else:
+                self.__analaizer_work_memory.append({"role": "assistant", "content": message['text']})
+                self.__sintetizer_work_memory.append({"role": "assistant", "content": message['text']})
+
+        logging.info("\n\n\n--------------SINTETIZER------------------")
+        logging.info("\n%s", json.dumps(self.__sintetizer_work_memory, indent=4))
+        logging.info("\n\n\n")
+        res = self.__ai_service.generate(self.__sintetizer_work_memory, max_tokens=50)
+        res = self.get_text(res)
+        logging.info(f"[Stage-1][Sintetizer][Thought]: {res}")
+
+        if es_demanda:
+            return res
         else:
-            saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)
+            consulta = celula_consultas.derive(self.__ai_service, res, max_tkns=10)
+            es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and not ("NO_PREGUNTA" in consulta)
+            if es_consulta:
+                logging.info("[Stage-1][Sintetizer][Thought]: Se mantiene la consulta inicial.")        
+                return query
+            else:
+                logging.info("[Stage-1][Sintetizer][Thought]: Se sustituye el query por el pensamiento.")
+                return res
 
-            user_prompt = f"""
-            user: {query}Texto: 
-            "%s"
-
-            Respuesta:        
-            """
-            self.__analaizer_work_memory.append({"role": "user", "content": user_prompt})
-            
-
+    def stage_one_evaluate(self, session_id, messages, attemps, query, es_demanda):
         #----------------------------------
         # Verifica si es una consulta o un caso
-        caso = celula_casos.derive(self.__ai_service, query, max_tkns=10)
-        consulta = celula_consultas.derive(self.__ai_service, query, max_tkns=10)
-        # Verifica si es un saludo, consulta o caso
+        if attemps == 1:
+            saludo = celula_saludos.derive(self.__ai_service, query, max_tkns=10)
+        else:
+            saludo = "NO_SALUDO"
 
-        #es_saludo = ("SALUDO" in saludo) and ("NO_PREGUNTA" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and not ("NO_SALUDO" in saludo)    
-        #es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and ("NO_QUEJA_DEMANDA" in caso) and ("NO_SALUDO" in saludo) and not ("NO_PREGUNTA" in consulta)
-        #es_caso = ("QUEJA_DEMANDA" in caso) and ("NO_PREGUNTA" in consulta) and ("NO_SALUDO" in saludo) and not ("NO_QUEJA_DEMANDA" in caso)
+        consulta = celula_consultas.derive(self.__ai_service, query, max_tkns=10)
+        caso = celula_casos.derive(self.__ai_service, query, max_tkns=10)
         
+        # Verifica si es un saludo, consulta o caso        
         es_saludo = ("SALUDO" in saludo) and not ("NO_SALUDO" in saludo)    
         es_consulta = ("PREGUNTA_O_SOLICITUD" in consulta) and not ("NO_PREGUNTA" in consulta)
         es_caso = ("QUEJA_DEMANDA" in caso) and not ("NO_QUEJA_DEMANDA" in caso)
@@ -919,7 +923,9 @@ class Dialog(ABC):
         logging.info("\n-----------------------------------------------------")
 
         eva = 0
+        res = None
         ambiguedad = False
+        dicriminador = None
         eva = 1 if es_saludo else 0
         eva += 1 if es_consulta else 0
         eva += 1 if es_caso else 0
@@ -966,9 +972,15 @@ class Dialog(ABC):
 
             # Casos ambiguos con consulta y caso
             elif es_consulta and es_caso and not es_saludo:
-                res = "¿Desea que le ayude con una consulta o una demanda?"
+                if es_demanda:
+                    dicriminador = "caso"
+                    res = query
+                    ambiguedad = False
+                else:
+                    res = "¿Desea que le ayude con una consulta o una demanda?"
             else:
                 ambiguedad = True
+                query = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
                 per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
                 if per_res and not per_res == "":
                     if "ABSURDO" in per_res:
@@ -981,25 +993,66 @@ class Dialog(ABC):
                 res = query
         else:
             ambiguedad = True
+            query = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
             per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
             if per_res and not per_res == "":
                 if "ABSURDO" in per_res:
                     dicriminador = None
                     res = msg
                     ambiguedad = False
+        return dicriminador, ambiguedad, res
 
-        if ambiguedad:    
-            logging.info("[Stage-1]: Respuesta con ambiguedad")
-            self.notify(session_id, "identificando ambiguedad...")
-            logging.info("\n\n\n--------------ANALIZER------------------")
-            logging.info("\n%s", json.dumps(self.__analaizer_work_memory, indent=4))
-            logging.info("------------------------------------------\n\n\n")
-            res = self.__ai_service.generate(self.__analaizer_work_memory, max_tokens=50)
-            logging.info(f"[Stage-1][Thought]: {res}")
-            self.__analaizer_work_memory.append({"role": "assistant", "content": res})                
-            self.__sintetizer_work_memory.append({"role": "assistant", "content": res})
-        #----------------------------------
 
+    def stage_one_classification(self, session_id, messages, attemps, query):
+        """ Stage one classification """
+        res = ""
+
+        dicriminador = None
+        logging.info(f"------------Flujo de excepcion---------------")
+        self.notify(session_id, "identificando intención...")        
+        logging.info(f"Intento de dialogo: {attemps}") 
+        
+        for internal_attemp in range(2):
+            logging.info(f"Intento de reflexion: {internal_attemp + 1}")
+
+            es_demanda = False
+            if len(messages) > 1:
+                message = messages[-2]
+                if not message['user'] and '¿Desea que le ayude con una consulta o una demanda?' in message['text']:
+                    demanda = celula_demanda.derive(self.__ai_service, query, max_tkns=10)
+                    es_demanda = ("DEMANDA" in demanda) and not ("INDEFINIDO" in demanda)
+                    if es_demanda:
+                        res = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
+                        dicriminador = "caso"
+                        return dicriminador, res
+
+            dicriminador, ambiguedad, res = self.stage_one_evaluate(session_id, messages, attemps, query, es_demanda)
+
+            if dicriminador == 'consulta':
+                aclaracion_fired = self.stage_one_check(session_id, messages, attemps, query)           
+                if aclaracion_fired:
+                    new_query = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
+                    if not new_query == query:
+                        query = new_query
+                        continue
+                else:
+                    res = "¿Desea que le ayude con una consulta o una demanda?"
+                    dicriminador = None
+                    break
+
+            if ambiguedad:
+                logging.info("[Stage-1]: Respuesta con ambiguedad")
+                self.notify(session_id, "identificando ambiguedad...")
+                
+                aclaracion_fired = self.stage_one_check(session_id, messages, attemps, query)           
+                if aclaracion_fired:
+                    query = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
+                else:
+                    res = "¿Desea que le ayude con una consulta o una demanda?"
+                    break
+            else:
+                break
+            
         return dicriminador, res
 
     def get_node(self, performative):

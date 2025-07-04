@@ -92,6 +92,8 @@ class BufferDispatcher(Action):
                     for item in item_list:                        
                         data = item['data']
                         mayor_ag_id = item['mayor_ag_id']
+                        session_id = item['session_id']
+
                         free_dict = self.agent.get_free_dict()
 
 
@@ -110,6 +112,8 @@ class BufferDispatcher(Action):
                                 'dtoList': []
                             }
                             self.adm.send_event(agent_id, 'task', data['dto'])
+                            # Registra la sesion
+                            self.agent.planilla[session_id] = mayor_ag_id
                             # Remove the item from the hold dict
                             self.agent.hold_dict[key].remove(item)
                             if len(self.agent.hold_dict[key]) == 0:
@@ -184,22 +188,21 @@ class SelectedDispatcher(Action):
         try:
             logging.info('Assign to agent...')
             session_id = data['dto']['session']['session_id'] if 'session' in data['dto'] else None
-            agent_list = self.agent.get_agent_list()
-            logging.debug('List of agents: ' + str(agent_list))
-            if session_id in self.agent.planilla:
-                mayor_ag_id = self.agent.planilla[session_id]
+            assistant = data['dto']['session']['assistant'] if 'session' in data['dto'] and 'assistant' in data['dto']['session'] else None            
+            if assistant:
                 logging.info('The session is already assigned')
-                logging.info(f'The agent {mayor_ag_id} will be assigned')
-                self.agent.add_to_hold(data, mayor_ag_id)
+                logging.info(f'The agent type: {assistant} will be assigned')
+                self.agent.add_to_hold(data, assistant, session_id)
             else:
                 score_mayor = 0 
                 mayor_ag = self.manual_selection(data['dto'])
                 if mayor_ag:
                     logging.info(f'The agent {mayor_ag.id} will be assigned')
-                    self.agent.add_to_hold(data, mayor_ag_id)
+                    self.agent.add_to_hold(data, mayor_ag.id, session_id)
                 else:
                     roles = []
                     # Get the agent asocciated with the data.
+                    agent_list = self.agent.get_agent_list()            
                     for agent_id in agent_list:
                         agent = self.adm.get_agent(agent_id)
                         # Chec if the agent is instance of AugmentedGeneration
@@ -222,7 +225,7 @@ class SelectedDispatcher(Action):
                     # Check if the mayor agent is the same as the agent        
                     if mayor_ag:
                         logging.info(f'The agent {mayor_ag.id} will be assigned')
-                        self.agent.add_to_hold(data, mayor_ag.id)
+                        self.agent.add_to_hold(data, mayor_ag.id, session_id)
                     else:
                         logging.error('[Error, toAssign]: No agent found for the request')
                         data['gateway'].put('ERROR')
@@ -430,14 +433,15 @@ class DispatcherController(Agent):
         diferencia_tiempo = current - item["lasttime"]
         return diferencia_tiempo < self.umbral_cinco_minutos
 
-    def add_to_hold(self, data, mayor_ag_id):
+    def add_to_hold(self, data, mayor_ag_id, session_id):
         text = data['dto']['text']
         if not self.check_hold(data):
             self.hold_dict[hash(text)] = []
         self.hold_dict[hash(text)].append({
             "data": data,
             "lasttime": datetime.now(),
-            "mayor_ag_id": mayor_ag_id
+            "mayor_ag_id": mayor_ag_id,
+            "session_id": session_id
         })
         logging.info(f"[Select]:[Dispacher]: Se asigan en el hold la consulta {data['dto']['text']}")
     
