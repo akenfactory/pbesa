@@ -29,7 +29,7 @@ from pbesa.social.dialog import (
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
                       celula_generar_documento, celula_expertos, celula_pertinencia, celula_extraccion,
                       celula_evaluador, celula_respuesta, celula_conversador, celula_parafraseo, celula_cuestionador,
-                      celula_instruccion, celula_generar_caso, celula_demanda)
+                      celula_instruccion, celula_generar_caso, celula_demanda, celula_verificar_calculos)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -942,8 +942,9 @@ class Dialog(ABC):
             elif es_consulta and not es_saludo and not es_caso:
                 dicriminador = "consulta"
                 per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
+                obj_check = celula_verificar_calculos.derive(self.__ai_service, query, max_tkns=10)
                 if per_res and not per_res == "":
-                    if "ABSURDO" in per_res:
+                    if "ABSURDO" in per_res and not "PERTINENTE" in obj_check:
                         dicriminador = None
                         res = msg
             elif es_caso and not es_saludo and not es_consulta:
@@ -1019,12 +1020,21 @@ class Dialog(ABC):
             if len(messages) > 1:
                 message = messages[-2]
                 if not message['user'] and '¿Desea que le ayude con una consulta o una demanda?' in message['text']:
-                    demanda = celula_demanda.derive(self.__ai_service, query, max_tkns=10)
-                    es_demanda = ("DEMANDA" in demanda) and not ("INDEFINIDO" in demanda)
-                    if es_demanda:
-                        res = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
-                        dicriminador = "caso"
-                        return dicriminador, res
+                    if 'consulta' in query:
+                        message = messages[-3]
+                        query = message['text']
+                        per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
+                        obj_check = celula_verificar_calculos.derive(self.__ai_service, query, max_tkns=10)
+                        if per_res and "ABSURDO" in per_res and not "PERTINENTE" in obj_check:
+                            return None, "No puedo ayudarle con su consulta. Dado que no está relacionada con los servicios que presta Justifacil."
+                        return 'consulta', query
+                    else:
+                        demanda = celula_demanda.derive(self.__ai_service, query, max_tkns=10)
+                        es_demanda = ("DEMANDA" in demanda) and not ("INDEFINIDO" in demanda)
+                        if es_demanda:
+                            res = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
+                            dicriminador = "caso"
+                            return dicriminador, res
 
             dicriminador, ambiguedad, res = self.stage_one_evaluate(session_id, messages, attemps, query, es_demanda)
 
