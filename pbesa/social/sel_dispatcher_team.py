@@ -188,7 +188,10 @@ class SelectedDispatcher(Action):
         try:
             logging.info('Assign to agent...')
             session_id = data['dto']['session']['session_id'] if 'session' in data['dto'] else None
-            assistant = data['dto']['session']['assistant'] if 'session' in data['dto'] and 'assistant' in data['dto']['session'] else None            
+            #assistant = data['dto']['session']['assistant'] if 'session' in data['dto'] and 'assistant' in data['dto']['session'] else None            
+            assistant = None
+            if data and 'conversation' in data and data['dto']['conversation']:
+                assistant = data['dto']['conversation']['assistant'] if data['dto']['conversation'] else None
             if assistant:
                 logging.info('The session is already assigned')
                 logging.info(f'The agent type: {assistant} will be assigned')

@@ -717,13 +717,13 @@ class Dialog(ABC):
             logging.error(f"Error al enviar notificación: {text}")
             logging.error(f"Error: {e}")
     
-    def update_conversation(self, session_manager, id_conversacion, res):
-        conversation = session_manager.get_conversation(id_conversacion)
+    def update_conversation(self, session_manager, conversation_id, res):
+        conversation = session_manager.get_conversation(conversation_id)
         if conversation:
             conversation['team-response'] = res
-            session_manager.update_conversation(id_conversacion, conversation)
+            session_manager.update_conversation(conversation_id, conversation)
         else:
-            logging.error(f"Error al actualizar la conversación: {id_conversacion}")
+            logging.error(f"Error al actualizar la conversación: {conversation_id}")
 
     def team_inquiry(self, session, team, data, operation, session_flag) -> str:
         try:
@@ -750,11 +750,11 @@ class Dialog(ABC):
                 response = canal.post(team.lower(), dto, timeout=300)
                 if response and not response['status']:
                     logging.error(f'No se pudo establecer la comunicación con el agente remoto')
-                    self.update_conversation(session_manager, session['id_conversacion'], None)
+                    self.update_conversation(session_manager, session['conversation_id'], None)
                     return None
                 logging.info(f'>>>> Response: {response}')
                 res = response['message']['response']
-                self.update_conversation(session_manager, session['id_conversacion'], res)
+                self.update_conversation(session_manager, session['conversation_id'], res)
                 return res
             else:
                 if operation and not operation == "Ninguno":
@@ -762,7 +762,7 @@ class Dialog(ABC):
                         "data": {
                             'text': data,
                             'operation': operation,
-                            'id_conversacion': session['id_conversacion'],
+                            'conversation_id': session['conversation_id'],
                             'session_id': session['session_id'],
                         },
                     }
@@ -776,10 +776,10 @@ class Dialog(ABC):
                 if response['status']:
                     logging.info(f'>>>> Response: {response}')
                     res = response['message']['response']
-                    self.update_conversation(session_manager, session['id_conversacion'], res)
+                    self.update_conversation(session_manager, session['conversation_id'], res)
                     return res
                 else:
-                    self.update_conversation(session_manager, session['id_conversacion'], None)
+                    self.update_conversation(session_manager, session['conversation_id'], None)
                     logging.error(f'No se pudo establecer la comunicación con el agente remoto')
                     return None
             logging.info("END: team_inquiry")
@@ -932,6 +932,9 @@ class Dialog(ABC):
         
         msg = "No puedo ayudarle con su consulta. Dado que no está relacionada con los servicios que presta Justifacil."
 
+        if es_consulta:
+            query = f"En el contexto jurídico. {query}" 
+
         # Verifica los casos
         if eva > 0 and eva < 3:
             logging.info("[Stage-1]: Discriminador encontrado")
@@ -1023,6 +1026,7 @@ class Dialog(ABC):
                     if 'consulta' in query:
                         message = messages[-3]
                         query = message['text']
+                        query = f"En el contexto jurídico. {query}"
                         per_res = celula_pertinencia.derive(self.__ai_service, query, max_tkns=10)
                         obj_check = celula_verificar_calculos.derive(self.__ai_service, query, max_tkns=10)
                         if per_res and "ABSURDO" in per_res and not "PERTINENTE" in obj_check:
@@ -1101,11 +1105,11 @@ class Dialog(ABC):
                 if owner == "Web" and dialog_state == DialogState.START:
                     logging.info(f"TOPTQ: {owner} - {dialog_state} - {team_source} - {query}")
                     session_manager = self.state['session_manager']        
-                    conversation = session_manager.get_conversation(session['id_conversacion'])
+                    conversation = session_manager.get_conversation(session['conversation_id'])
                     attemps = conversation.get('attemps', 1)            
                     dicriminador, res = self.stage_one_classification(session['session_id'], conversation['messages'], attemps, query)
                     conversation['attemps'] = attemps + 1
-                    session_manager.update_conversation(session['id_conversacion'], conversation)
+                    session_manager.update_conversation(session['conversation_id'], conversation)
                     logging.info(f"Discriminador: {dicriminador}")
                     # Limpia la memoria de trabajo
                     # Para que el agente la utilice en
@@ -1358,7 +1362,7 @@ class Dialog(ABC):
                             if "especialistas" in node.text.lower():
                                 self.notify(session['session_id'], "consultando especialistas...")
                                 session_manager = self.state['session_manager']
-                                conversation = session_manager.get_conversation(session['id_conversacion'])
+                                conversation = session_manager.get_conversation(session['conversation_id'])
                                 if 'team-response' in conversation:
                                     res = conversation['team-response']
                                 else:
@@ -1401,9 +1405,9 @@ class Dialog(ABC):
                             if "expertos" in node.text.lower():
                                 self.notify(session['session_id'], "consultando expertos...")
                                 session_manager = self.state['session_manager']
-                                conversation = session_manager.get_conversation(session['id_conversacion'])
+                                conversation = session_manager.get_conversation(session['conversation_id'])
                                 conversation['case'] = query
-                                session_manager.update_conversation(session['id_conversacion'], conversation)
+                                session_manager.update_conversation(session['conversation_id'], conversation)
                                 logging.info("[Node]:[Action]:[Call]:[Continua]:[Consulta]: Caso almacenado")
                         else:
                             logging.info("[Node]:[Action]:[Call]:[Continua]:[Inferencia]:")
