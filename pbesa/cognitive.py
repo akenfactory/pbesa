@@ -588,7 +588,6 @@ class Dialog(ABC):
         self.definitions = None
         self.rules = None
         self.__q_attemps = 0
-
         
     def setup_world(self):
         """ Set up model method """
@@ -830,7 +829,6 @@ class Dialog(ABC):
             msg = DialogState.ERROR
             return "Web", DialogState.START, msg, "Web"
     
-
     def stage_one_check(self, session_id, messages, attemps, query):
         aclaracion_fired = False
         for message in messages:
@@ -1005,7 +1003,6 @@ class Dialog(ABC):
                     res = msg
                     ambiguedad = False
         return dicriminador, ambiguedad, res
-
 
     def stage_one_classification(self, session_id, messages, attemps, query):
         """ Stage one classification """
@@ -1456,22 +1453,57 @@ class Dialog(ABC):
                             data['text'] = item['content']
                             break
                     self.notify(session['session_id'], f"continuando díalogo paso a usuario")                    
-                    res = self.evaluate(session, data['text'])                    
+                    res = self.evaluate(session, data['text'])
+
+                    response = res
+                    process_state = "RUNNING"
+                    if response and "RECHAZO:" in response:
+                        response = response.replace("RECHAZO:", " ")
+                        response = response.replace('"', " ")
+                        response = response.replace('La comversación', "El caso")
+                        response = response.strip()
+                        response += "\n\nSi desea continuar con el trámite, por favor responda: Sí o No."
+                        process_state = "RECHAZO"
+                    if response and "no aplica" in response:
+                        process_state = "RECHAZO"
+                    if response and "el caso aplica" in response:
+                        process_state = "APROBADO"
+                    session_manager = self.state['session_manager']             
+                    session_manager.update_session(session['session_id'], { 
+                        'process_state': process_state
+                    })
+                                    
                     if 'Lo lamento' in res:
                         logging.info(f"------------RESET---------------")
                         self.reset()
                         self.notify(session['session_id'], "STOP")
                         return "Web", DialogState.START, res, "Web"                    
                     return owner, node.performative, res, owner
-
-                self.__work_memory.append({"role": "system", "content": node.text})
-                logging.info(f"=> !!!!: {query}")
-                logging.info("-----")
-                logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
-                logging.info("-----")
-                res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
-                res = self.get_text(res)
-                logging.info(f"[Inferencia]:[Thought]:[DEEP]: {res}")
+                
+                if "De acuerdo a tu conocimiento, compara con los casos conocidos el caso mencionado por el usuario" in node.text:
+                    data = {"text": ""}
+                    for item in reversed(self.__work_memory):
+                        if item['role'] == 'user':
+                            data['text'] = item['content']
+                            break
+                    self.notify(session['session_id'], f"comparando con la jurísprudencia")                    
+                    res = self.retrieval(data['text'])
+                    logging.info(f"[Inferencia]:[Thought]:[DEEP]: {res}")
+                    if 'Lo lamento' in res:
+                        logging.info(f"------------RESET---------------")
+                        self.reset()
+                        self.notify(session['session_id'], "STOP")
+                        return "Web", DialogState.START, res, "Web"
+                else:
+                    self.__work_memory.append({"role": "system", "content": node.text})
+                    logging.info(f"=> !!!!: {query}")
+                    logging.info("-----")
+                    logging.info("\n%s", json.dumps(self.__work_memory, indent=4))
+                    logging.info("-----")
+                    res = self.__ai_service.generate(self.__work_memory, max_tokens=1000)
+                    res = self.get_text(res)
+                    logging.info(f"[Inferencia]:[Thought]:[DEEP]: {res}")
+                    
                 # Check if res is empty
                 if not res or res == "" or res == "ERROR":
                     return self.recovery(session['session_id'], query)
@@ -1479,15 +1511,7 @@ class Dialog(ABC):
                 new_dialog_state = node.performative
                 if not node.is_terminal:
                     # Verifica recursion
-                    if not self.chek_user_interaction(node.children):
-                        #if self.__visited_nodes > 3:
-                        #    self.__visited_nodes = 0
-                        #    logging.info(f"[Inferencia]:[Recursion]: Deep limit")
-                        #    logging.info(f"------------RESET---------------")
-                        #    self.reset()
-                        #    self.notify(session['session_id'], "STOP")
-                        #    res = DialogState.ERROR
-                        #    return "Web", DialogState.START, res, "Web"
+                    if not self.chek_user_interaction(node.children):                        
                         logging.info(f"[Inferencia]:[Recursion]:[Performativa]: {node.performative}")
                         self.notify(session['session_id'], "efectuando inferencia en profundidad")
                         #return self.do_transition(session, owner, node, query)
@@ -1496,9 +1520,7 @@ class Dialog(ABC):
                     return owner, new_dialog_state, res, owner
                 self.notify(session['session_id'], f"finalizando díalogo de inferencia")
                 logging.info(f"Tipe node: {type(node)}")
-                logging.info(f"$$$> new_owner: {owner} new_dialog_state: {new_dialog_state}")
-                #logging.info(f"------------RESET---------------")
-                #self.reset()      
+                logging.info(f"$$$> new_owner: {owner} new_dialog_state: {new_dialog_state}")    
                 self.notify(session['session_id'], "STOP")
                 return "Web", DialogState.START, res, "Web"
             logging.info("END: do_transition")
@@ -1821,3 +1843,31 @@ class SpecialDispatch():
             self.__meta_work_memory = []
             self.major_id = None
             return None, None
+
+
+# --------------------------------------------------------
+# Define RAG
+# --------------------------------------------------------
+
+class RAG():
+    """ RAG """
+
+    def __init__(self) -> None:
+        """ Constructor method """
+        self.knowledge = None
+    
+    @abstractmethod
+    def retrieval(self, query) -> str:
+        """ Set retrieval method
+        :param query: query
+        :return: str
+        """
+        pass
+    
+    @abstractmethod
+    def kusto_connection(self):
+        pass
+
+    @abstractmethod
+    def kusto_open(self) -> bool:
+        pass
