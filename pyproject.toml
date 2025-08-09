@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=64.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pbesa"
+version = "4.0.47"
+
+description = "Plataforma para crear sistemas multiagentes racionales"
+readme = {file = "README.md", content-type = "text/markdown"}
+
+dependencies = [
+    "pymongo>=4.6.3",
+    "requests>=2.32.3",
+    "azure-ai-projects>=1.0.0b6",
+    "azure-ai-inference>=1.0.0b9",
+    "azure-identity>=1.21.0",
+    "pandas>=2.2.3",
+    "scikit-learn>=1.6.1",
+    "fuzzywuzzy>=0.18.0",
+]
+
+# Esta sección es opcional pero recomendada para replicar `find_packages()`
+[tool.setuptools.packages.find]
+where = ["."]  # Busca paquetes en el directorio raíz (como lo hace find_packages() por defecto)
