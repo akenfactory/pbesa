@@ -35,18 +35,18 @@ def normalizar_texto(stopwords_es, texto: str) -> str:
     res = ' '.join(res)
     return res
 
-def extractor_texto(query: str, textos: list) -> str:
+def extractor_texto(stopwords_es, query: str, textos: list) -> str:
     """
     Extrae el texto de la respuesta.
     """
-    query_normalizado = normalizar_texto(query)
+    query_normalizado = normalizar_texto(stopwords_es, query)
     query_split = query_normalizado.split()
     major = 0
     major_texto = ""
     for texto in textos:
         score = 0
         original_texto = texto
-        texto = normalizar_texto(texto)
+        texto = normalizar_texto(stopwords_es, texto)
         texto_split = texto.split()
         for word in query_split:
             for word_texto in texto_split:
