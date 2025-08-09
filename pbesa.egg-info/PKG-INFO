@@ -1,0 +1,153 @@
+Metadata-Version: 2.4
+Name: pbesa
+Version: 4.0.47
+Summary: Plataforma para crear sistemas multiagentes racionales
+Author: PBESA Team
+License-Expression: MIT
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: pymongo>=4.6.3
+Requires-Dist: requests>=2.32.3
+Requires-Dist: azure-ai-projects>=1.0.0b6
+Requires-Dist: azure-ai-inference>=1.0.0b9
+Requires-Dist: azure-identity>=1.21.0
+Requires-Dist: pandas>=2.2.3
+Requires-Dist: scikit-learn>=1.6.1
+Requires-Dist: fuzzywuzzy>=0.18.0
+Dynamic: license-file
+
+## An artificial intelligence platform for the implementation of multi-agent systems based on python 3 and the BESA model
+Actually, Agents and MultiAgent Systems (MAS) are one of the most prominent and attractive technologies in Engineering and
+Computer Science. Agent and MAS technologies, methods, and theories are currently contributing to many diverse domains
+such as information retrieval, user interface design, robotics, computer games, education and training, smart environments, social simulation, management projects, e-business, knowledge management, virtual reality.
+
+An Agent is an entity that includes mechanisms to receive perceptions from its environment and modify it. The work of an agent is to decide or to infer which is the most adequate action to achieve a specific goal. An agent has several resources and skills, and frequently it can communicate with other agents. The correct action is selected using a function mapping that can be expressed in different ways, ranging from simple condition-action rules to complex
+inference mechanisms. In some cases the mapping function can be given, in agents with mayor autonomy this function can be directly learned by the agent.
+
+The capabilities of an isolated agent are limited to its resources and abilities. When objectives get more complex, the mapping function to select the best action is less efficient, because the complexity of this function is increased. Thus, it is more efficient to build several agents, where each agent contributes to achieve the general goal. A MAS can be defined as a collection of agents that cooperate to achieve a goal.
+
+# BESA
+The abstract model of BESA is based in three fundamental concepts: a modular behaviororiented agent architecture, an event-driven control approach implementing a select like mechanism, and a social-based support for cooperation between agents.
+
+### Behavior-Oriented
+When building agents, one of the critical problems to solve is the complexity; as the agent is intended to be more rational and autonomous, the elements involved became more complex. In order to deal with this growing problem,
+different modular architectures have been proposed. The fundamental idea is to break down a complex entity into a set of small simpler ones.
+
+### Event-Driven
+In the BESA model, an agent is seen as it is immersed in an environment populated of events. An event can be interpreted as a signal allowing to perceive that something interesting for an agent has occurred, and can include
+information about what has happened. What is really relevant is not the information, but the fact that the agent receives an stimulus and must react to produce a response.
+
+### Social-Based
+In order to analyze and design a MAS, the use of a social based model allows to study the system
+as an organization of interacting entities. Ferber has proposed a set of essential functions and dimensions to analyze an organization of agents; such approach has the advantage of identifying in a structured way the relations of the entities
+composing the system, as well as the connections with other systems.
+
+See full paper: [BESA PAPER](https://pdfs.semanticscholar.org/5836/027c6c07b124ac86d3343aa56b43b52779e6.pdf)
+
+# Install PBESA
+pip install pbesa
+
+# Get started
+To create a MAS with PBESA, you need to follow 3 simple steps:
+
+### Step 1 - Create a PBESA container:
+```
+from pbesa.kernel.system.Adm import Adm
+mas = Adm()
+mas.start()
+```
+### Step 2 - Create an action:
+```
+from pbesa.kernel.agent.Action import Action
+class SumAction(Action):
+    """ An action is a response to the occurrence of an event """
+
+    def execute(self, data):
+        """ 
+        Response.
+        @param data Event data 
+        """
+        print(self.agent.state['acum'] + data)
+
+    def catchException(self, exception):
+        """
+        Catch the exception.
+        @param exception Response exception
+        """
+        pass
+```
+### Step 3 - Create an agent:
+- Define Agent
+```
+from pbesa.kernel.agent.Agent import Agent
+class SumAgent(Agent):
+    """ Through a class the concept of agent is defined """
+    
+    def setUp(self):
+        """
+        Method that allows defining the status, structure 
+        and resources of the agent
+        """
+        # Defines the agent state
+        self.state = {
+            'acum': 7
+        }
+        # Defines the behavior of the agent. An agent can 
+        # have one or many behaviors
+        self.addBehavior('calculate')
+        # Assign an action to the behavior
+        self.bindAction('calculate', 'sum', SumAction())
+
+    def shutdown(self):
+        """ Method to free up the resources taken by the agent """
+        pass
+```
+### Step 4 - Run MAS:
+```
+if __name__ == "__main__":
+    """ Main """
+    try:
+        # Initialize the container
+        mas = Adm()
+        mas.start()
+
+        # Create the agent
+        agentID = 'Jarvis'
+        ag = SumAgent(agentID)
+        ag.start()
+
+        # Send the event
+        data = 8
+        mas.sendEvent('Jarvis', 'sum', data)
+
+        # Remove the agent from the system
+        time.sleep(1)
+        mas.killAgent(ag)
+
+        # Destroy the Agent Container
+        mas.destroy()
+    except:
+        traceback.print_exc()
+```
+
+# Integration with Django
+In the examples folder there is a Django project. Given the expression of "Hello world" through GET. The system responds in Spanish.
+
+### It can be started with:
+```
+python manage.py runserver 0.0.0.0:8000 --noreload
+```
+
+### To invoke the functionality you can:
+```
+curl localhost:8000/pbesa/translate?data=Hello_World
+```
