@@ -5,10 +5,26 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pbesa"
 version = "4.0.47"
-
 description = "Plataforma para crear sistemas multiagentes racionales"
 readme = {file = "README.md", content-type = "text/markdown"}
+license = "MIT"
 
+[tool.setuptools.dynamic]
+license-file = {file = "LICENSE"}
+authors = [
+    {name = "PBESA Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.8"
 dependencies = [
     "pymongo>=4.6.3",
     "requests>=2.32.3",
@@ -20,6 +36,5 @@ dependencies = [
     "fuzzywuzzy>=0.18.0",
 ]
 
-# Esta sección es opcional pero recomendada para replicar `find_packages()`
 [tool.setuptools.packages.find]
-where = ["."]  # Busca paquetes en el directorio raíz (como lo hace find_packages() por defecto)
+where = ["."]
