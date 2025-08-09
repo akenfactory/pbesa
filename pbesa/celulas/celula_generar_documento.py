@@ -1,13 +1,14 @@
 import logging
 
 PROMPT = """
-Eres un asistente jurídico experto. Tu tarea es **extraer los datos** y generar el documento siguiendo una plantilla predefinida.
+Eres un asistente jurídico experto. Tu tarea es **extraer los datos** y generar el documento siguiendo una plantilla predefinida de acuerdo a los datos diponibles.
 
 Recibirás un texto que incluye:
 - Un relato de hechos sobre una posible infracción
 - Datos personales del demandante y del demandado (pueden venir con nombre de campo o en texto libre)
 - Información de contacto
 - Algunas veces: el nombre de la entidad ante la cual se presenta la demanda
+- Si no existen los datos de acuerdo a la plantilla se debe omitir en la generación estos campos. Ejemplo: si no existe datos del apoderado, se debe generar el docuemntos sin la sección de apoderado.
 
 Usa el siguiente formato para estructurar tu respuesta. Si hay datos que no se encuentran, déjalos como estan en el formato.
 
