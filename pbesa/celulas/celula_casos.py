@@ -1,4 +1,5 @@
 import logging
+from .common import contains_trigger
 
 PROMPT = """
 Eres un clasificador que identifica si un texto corresponde a una queja o demanda que debe ser radicada ante un ente de control del Estado colombiano.
@@ -40,6 +41,9 @@ Responde únicamente con:
 # Efectua la inferencia del modelo.
 def derive(service, text, max_tkns=2000) -> any:
     try:
+        #if contains_trigger(text):
+        #    return "NO_QUEJA_DEMANDA"
+        
         logging.info(f"Procesando: {text}")
         tmp_work_memory = []
         user_prompt  = """

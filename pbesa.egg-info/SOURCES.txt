@@ -72,6 +72,7 @@ pbesa/celulas/celula_preguntas.py
 pbesa/celulas/celula_respuesta.py
 pbesa/celulas/celula_saludos.py
 pbesa/celulas/celula_verificar_calculos.py
+pbesa/celulas/common.py
 pbesa/celulas/data_extraction_cel.py
 pbesa/celulas/web.py
 pbesa/kernel/__init__.py

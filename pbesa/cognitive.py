@@ -1039,17 +1039,18 @@ class Dialog(ABC):
 
             dicriminador, ambiguedad, res = self.stage_one_evaluate(session_id, messages, attemps, query, es_demanda)
 
-            if dicriminador == 'consulta':
-                aclaracion_fired = self.stage_one_check(session_id, messages, attemps, query)           
-                if aclaracion_fired:
-                    new_query = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
-                    if not new_query == query:
-                        query = new_query
-                        continue
-                else:
-                    res = "¿Desea que le ayude con una consulta o una demanda?"
-                    dicriminador = None
-                    break
+            # Aqui las consultas las rectificamos pero ahora ya no.
+            #if dicriminador == 'consulta':
+            #    aclaracion_fired = self.stage_one_check(session_id, messages, attemps, query)           
+            #    if aclaracion_fired:
+            #        new_query = self.stage_one_sintetizer(session_id, messages, attemps, query, es_demanda)
+            #        if not new_query == query:
+            #            query = new_query
+            #            continue
+            #    else:
+            #        res = "¿Desea que le ayude con una consulta o una demanda?"
+            #        dicriminador = None
+            #        break
 
             if ambiguedad:
                 logging.info("[Stage-1]: Respuesta con ambiguedad")
