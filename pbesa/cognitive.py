@@ -336,7 +336,7 @@ class AugmentedGeneration(ABC):
             self.reset()
             return DialogState.ERROR
         
-    def derive(self, query, max_tokens=4096, temperature=0, top_p=0.9) -> str:
+    def derive(self, query, max_tokens=2000, temperature=0, top_p=0.9) -> str:
         """ Generate method
         :return: str
         """

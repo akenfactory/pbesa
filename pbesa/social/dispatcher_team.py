@@ -66,6 +66,60 @@ class AgentDto():
         """
         self.id = agent_id
 
+class TarguedDispatcher(Action):
+    """ An action is a response to the occurrence of an event """
+
+    def __init__(self) -> None:
+        """ Constructor """  
+        super().__init__()
+        self.__rewier = {}
+        self.planilla = {}
+
+    def active_timeout(self, ag, time: int) -> None:
+        """ Active timeout
+        @param time: Time
+        """
+        logging.info(f"[Delegate] Send event timeout {time}")
+        self.adm.send_event(ag, 'timeout', {'time': time, 'command': 'start'})
+    
+    def execute(self, data: any) -> None:
+        """ 
+        Response.
+        @param data Event data 
+        """
+        try:
+            logging.info('Assign to agent...')
+            session_id = data['dto']['session']['session_id'] if 'session' in data['dto'] else None
+            if session_id in self.planilla:
+                ag_id = self.planilla[session_id]                
+                logging.info(f'The agent {ag_id} is assigned')
+                self.agent.get_request_dict()[ag_id] = {
+                    'gateway': data['gateway'],
+                    'dtoList': []
+                }
+                self.adm.send_event(ag_id, 'task', data['dto'])                
+            else:                
+                ag = self.agent.get_free_queue().get()
+                self.agent.get_request_dict()[ag] = {
+                    'gateway': data['gateway'],
+                    'dtoList': []
+                }
+                self.adm.send_event(ag, 'task', data['dto'])
+                self.planilla[session_id] = ag
+                # Check timeout    
+                if 'timeout' in self.agent.state:
+                    self.active_timeout(ag, self.agent.state['timeout'])
+                else:
+                    data['gateway'].put('ERROR')
+                    logging.error('[Delegate]: Timeout not defined in the state as "timeout" key')
+        except Exception as e:
+            traceback.print_exc()
+            logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
+            data['gateway'].put('ERROR')
+    
+    def get_planilla(self) -> dict:
+        return self.planilla
+
 class SelectedDispatcher(Action):
     """ An action is a response to the occurrence of an event """
 
@@ -274,6 +328,7 @@ class NotifyFreeAction(Action):
         @param data Event data 
         """
         self.agent.get_free_queue().put(data)
+        logging.info(f"[ResponseAction][{self.agent.id}]: agente {data} liberado")
 
 # --------------------------------------------------------
 # Define Action
@@ -295,11 +350,8 @@ class ResponseAction(Action):
         """ Execute
         @param data: Data
         """
-        #@TODO: Check if the data is valid
-        #logging.info(f"[ResponseAction][{self.agent.id}]: Obtiene respuesta")
         if data['source'] in self.agent.get_request_dict():
-            request = self.agent.get_request_dict()[data['source']]
-        
+            request = self.agent.get_request_dict()[data['source']]        
             if 'timeout' in data:
                 logging.info(f"[ResponseAction][{self.agent.id}]: Timeout ******************")
                 request['gateway'].put("TIMEOUT")
@@ -315,7 +367,7 @@ class ResponseAction(Action):
                         planilla = delegate.get_planilla()
                         print(f"Planilla: {planilla}")
                         planilla.pop(data['session_id'], None)
-                        logging.info(f"[ResponseAction][{self.agent.id}]: Planilla: actualizada")
+                        logging.info(f"[ResponseAction][{self.agent.id}]: Planilla: actualizada")                                              
         else:
             logging.warning(f"[ResponseAction][{self.agent.id}]: Warning ******************")
             logging.warning(f"[ResponseAction][{self.agent.id}]: {data}")
@@ -593,7 +645,10 @@ class LLMDispatcherDelegate(Action):
                         if isinstance(agent_obj, Dialog):
                             # Get the role
                             tipo = "-".join(agent_obj.id.split('-')[0:-1])
-                            if select_agent == tipo:
+
+                            print(f"TIPO:::> {tipo}")
+
+                            if tipo in select_agent:
                                 logging.info(f'The agent {ag} is assigned')
                                 self.agent.get_request_dict()[ag] = {
                                     'gateway': data['gateway'],

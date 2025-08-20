@@ -215,6 +215,12 @@ class SelectedDispatcher(Action):
                             if not role.name in roles:
                                 score = self.calculate_close(role.description, data)
                                 logging.info(f"Score: {score}")
+
+                                if score > 0.97:
+                                    score_mayor = score
+                                    mayor_ag = agent
+                                    break
+
                                 if score > score_mayor:
                                     score_mayor = score
                                     mayor_ag = agent
