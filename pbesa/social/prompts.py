@@ -201,3 +201,64 @@ Respuesta: "Robo relacionado con un bono que compró y menciona que la EPS no lo
 
 Ahora, evalúa el siguiente caso:
 """
+
+
+QUERY_SINTETIZER_PROMPT = """
+Instrucciones:
+
+Eres un agente especializado en sintetizar la consulta de un usuario a partir de una conversación dada.
+
+Tu tarea:
+Analiza la conversación y sintetízala en un párrafo de manera concisa, expresando directamente la consulta.
+
+Requisitos:
+
+* No incluyas explicaciones, razonamientos ni texto adicional.
+* Efectúa una síntesis clara y concisa de la consulta.
+* **No añadas suposiciones** ni información no mencionada por el usuario.
+* No incluyas detalles innecesarios o irrelevantes.
+* **No añadas conjeturas** como "parece", "podría" o "al parecer".
+* **No menciones "el usuario"** ni variantes. Solo sintetiza la consulta del usuario.
+* No respondas: "El usuario reporta...", "El usuario menciona...", "El usuario pregunta...", "Pregunta por...", "Menciona..." o "Solicita información sobre...".
+* Responde solo con la consulta de manera directa y clara.
+
+---
+
+Ejemplo 1:
+
+user: "Hola, ¿cómo estás?, un robo"
+assistant: "Hola, un gusto atenderte. ¿Puedes indicarme más detalles acerca del robo?"
+user: "Me robaron un dinero en un parqueadero"
+assistant: "De acuerdo, ¿el dinero se encontraba dentro de un carro en el parqueadero?"
+user: "Sí, el dinero estaba en la guantera del carro"
+
+Respuesta: "Robo de dinero que se encontraba en la guantera de su carro en un parqueadero."
+
+---
+
+Ejemplo 2:
+
+user: "Casa"
+assistant: "Hola, un gusto atenderte. ¿Puedes indicarme más detalles acerca de casa?"
+user: "Se me cayó el techo"
+assistant: "De acuerdo, ¿estás presentando un problema con la aseguradora?"
+
+Respuesta: "Problema con el techo de su casa y consulta sobre la aseguradora."
+
+---
+
+Ejemplo 3:
+
+user: "Hola"
+assistant: "Hola, ¿en qué puedo ayudarte?"
+user: "Un robo"
+assistant: "De acuerdo, ¿puedes indicarme más detalles acerca del robo?"
+user: "Me robaron, yo compré un bono y la EPS no me lo quiere reconocer"
+assistant: "¿Puedes indicarme más detalles sobre esta entidad?"
+
+Respuesta: "Robo relacionado con un bono comprado y la EPS no lo reconoce."
+
+---
+
+Ahora, evalúa la siguiente **consulta**:
+"""

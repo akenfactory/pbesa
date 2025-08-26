@@ -13,11 +13,34 @@
 # Define resources
 # --------------------------------------------------------
 
+import time
 import logging
+import concurrent.futures
 from threading import Timer
 from abc import abstractmethod
 from ..kernel.agent import Agent
 from ..kernel.agent import Action
+
+# ----------------------------------------------------------
+# Common function
+# ----------------------------------------------------------
+
+def task_join(tasks:list, query:any, workers=3) -> dict:
+    res = {}
+    # Capture start time
+    start_time = time.time()
+    logging.debug(f"[task_join]: Starting tasks with query: {query}")
+    # Execute tasks in parallel using ThreadPoolExecutor
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+        resultados = list(executor.map(lambda func: func(query), tasks))
+    for func, resultado in zip(tasks, resultados):
+        print(f"- {func.__name__}: {resultado}")
+        res[func.__name__] = resultado
+    # Capture end time
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    logging.debug(f"[task_join]: All tasks completed in {elapsed_time:.2f} seconds")
+    return res
 
 # ----------------------------------------------------------
 # Defines system component exceptions
