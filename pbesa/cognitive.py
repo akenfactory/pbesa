@@ -27,9 +27,11 @@ from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
-                      celula_generar_documento, celula_expertos, celula_pertinencia, celula_extraccion,
+                      celula_expertos, celula_pertinencia, celula_extraccion,
                       celula_evaluador, celula_respuesta, celula_conversador, celula_parafraseo, celula_cuestionador,
-                      celula_instruccion, celula_generar_caso, celula_demanda, celula_verificar_calculos)
+                      celula_instruccion, celula_generar_caso, celula_demanda, celula_verificar_calculos,
+                      celula_generar_doc_caso, celula_generar_doc_advice, celula_generar_doc_fact,
+                      celula_generar_doc_goal, celula_generar_doc_test)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
 
 # --------------------------------------------------------
@@ -298,8 +300,18 @@ class AugmentedGeneration(ABC):
         try:
             if command == "DATA_TYPE":
                 return celula_datos_identificables.derive(self.__ai_service, query)
-            elif command == "GENERATE_DOCUMENT":
-                return celula_generar_documento.derive(self.__ai_service, query["template"], query["text"])
+            
+            elif command == "GENERATE_CASE":
+                return celula_generar_doc_caso.derive(self.__ai_service, query["case"])            
+            elif command == "GENERATE_ADVICE":
+                return celula_generar_doc_advice.derive(self.__ai_service, query["case"])
+            elif command == "GENERATE_FACT":
+                return celula_generar_doc_fact.derive(self.__ai_service, query["case"])
+            elif command == "GENERATE_GOAL":
+                return celula_generar_doc_goal.derive(self.__ai_service, query["case"])
+            elif command == "GENERATE_TEST":
+                return celula_generar_doc_test.derive(self.__ai_service, query["case"])
+            
             elif command == "EXPERTS":
                 retrieval = self.retrieval(query)
                 return celula_expertos.derive(self.__ai_service, query, retrieval, max_tkns)
