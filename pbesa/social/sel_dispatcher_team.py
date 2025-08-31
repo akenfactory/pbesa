@@ -138,7 +138,7 @@ class BufferDispatcher(Action):
                                 data['gateway'].put('ERROR')
                                 logging.error('[Error, toAssign]: The agent is not available')
                 logging.info(f"[Select]:[Dispacher]: Hold dict elements {len(self.agent.hold_dict)}")
-                time.sleep(10)
+                time.sleep(3)#
         except Exception as e:
             traceback.print_exc()
             logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
