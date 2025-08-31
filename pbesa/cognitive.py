@@ -1507,6 +1507,11 @@ class Dialog(ABC):
                         self.reset()
                         self.notify(session['session_id'], "STOP")
                         return "Web", DialogState.START, res, "Web"
+                
+                elif "Por favor, indíqueme qué" in node.text or "Por favor, proporcione los" in node.text:
+                    res = node.text
+                    logging.info(f"Consulta directa: {res}")
+
                 else:
                     self.__work_memory.append({"role": "system", "content": node.text})
                     logging.info(f"=> !!!!: {query}")

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pbesa"
-version = "4.0.53"
+version = "4.0.54"
 description = "Plataforma para crear sistemas multiagentes racionales"
 readme = {file = "README.md", content-type = "text/markdown"}
 license = "MIT"
