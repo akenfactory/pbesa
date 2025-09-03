@@ -101,6 +101,10 @@ class BufferDispatcher(Action):
 
                         for k in free_dict:
                             if mayor_ag_id in k:
+                                if "competencia-desleal" in mayor_ag_id and not "competencia-desleal" in k:
+                                    continue
+                                elif "propiedad-industrial" in mayor_ag_id and not "competencia-desleal" in mayor_ag_id and "competencia-desleal" in k:
+                                    continue
                                 agent_id = k
                                 break
 
