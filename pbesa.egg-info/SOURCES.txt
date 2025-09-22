@@ -70,6 +70,7 @@ pbesa/celulas/celula_generar_doc_fact.py
 pbesa/celulas/celula_generar_doc_goal.py
 pbesa/celulas/celula_generar_doc_test.py
 pbesa/celulas/celula_instruccion.py
+pbesa/celulas/celula_marco.py
 pbesa/celulas/celula_parafraseo.py
 pbesa/celulas/celula_pertinencia.py
 pbesa/celulas/celula_preguntas.py

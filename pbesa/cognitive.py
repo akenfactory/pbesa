@@ -19,6 +19,7 @@ import pickle
 import logging
 import traceback
 from .mas import Adm
+from fuzzywuzzy import fuzz
 from pydantic import BaseModel
 from typing import List, Optional
 from abc import ABC, abstractmethod
@@ -27,7 +28,7 @@ from pbesa.social.dialog import (
     DialogState, imprimir_grafo, recorrer_interacciones, extraer_diccionario_nodos, 
     ActionNode, DeclarativeNode, GotoNode)
 from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_datos_identificables,
-                      celula_expertos, celula_pertinencia, celula_extraccion,
+                      celula_expertos, celula_pertinencia, celula_extraccion, celula_marco,
                       celula_evaluador, celula_respuesta, celula_conversador, celula_parafraseo, celula_cuestionador,
                       celula_instruccion, celula_generar_caso, celula_demanda, celula_verificar_calculos,
                       celula_generar_doc_caso, celula_generar_doc_advice, celula_generar_doc_fact,
@@ -113,6 +114,34 @@ class AgentMetadata():
 # --------------------------------------------------------
 # Define common functions
 # --------------------------------------------------------
+
+def es_similar(text1, text2):
+    similitud = fuzz.ratio(text1.lower(), text2.lower())
+    return True if similitud >= 79 else False, similitud
+
+def validate_pattern(dto):
+    score_acum = 0
+    patterns = dto['patterns']
+    text_split = dto['text_split']
+    for pattern in patterns:
+        for word in text_split:
+            res, similitud = es_similar(word, pattern)
+            if res:
+                score_acum += similitud
+                break
+    return score_acum / len(patterns) > 80
+
+def evaluate_patterns(patterns_set, text):
+    if text:
+        text_split = text.split(" ")
+        for patterns in patterns_set:
+            dto = {
+                'patterns': patterns,
+                'text_split': text_split
+            }
+            if validate_pattern(dto):
+                return True
+    return False
 
 def define_service_provider(provider, ai_service=None, substitudes = False) -> None:
         # Define provider
@@ -1631,6 +1660,10 @@ class Dialog(ABC):
             if simulator:
                 simulator.set_service(self.__ai_service)
                 return simulator.derive(query, max_tkns=max_tkns)
+        if command == "EVA_MARCO":
+            return celula_marco.derive(self.__ai_service, query, max_tkns=max_tkns)
+        if command == "EVA_PATTERNS":
+            return validate_pattern(query)
         return None
     
     def parse_conversation(self) -> str:
