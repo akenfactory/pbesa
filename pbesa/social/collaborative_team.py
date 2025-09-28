@@ -157,11 +157,15 @@ class ResponseAction(Action):
         @param data: Event data
         """
         if 'timeout' == data:
-            logging.info('Stopping timeout')
-            results = {}
-            for key, res in self.agent.get_check_dict().items():
-                results[key] = res
-            self.end_of_process(results, True)
+            logging.info('Timeout fired')
+            if self.agent.is_timeout():
+                results = {}
+                for key, res in self.agent.get_check_dict().items():
+                    results[key] = res
+                self.end_of_process(results, True)
+                logging.info('Response by TIMEOUT')
+            else:
+                logging.info('Timeout ignored')
         else:
             logging.info("Response received")
             logging.info(data)
