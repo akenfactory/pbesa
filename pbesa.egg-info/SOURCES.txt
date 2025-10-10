@@ -60,6 +60,7 @@ pbesa/celulas/celula_conversador.py
 pbesa/celulas/celula_cuestionador.py
 pbesa/celulas/celula_datos_identificables.py
 pbesa/celulas/celula_demanda.py
+pbesa/celulas/celula_diligencia.py
 pbesa/celulas/celula_evaluador.py
 pbesa/celulas/celula_expertos.py
 pbesa/celulas/celula_extraccion.py
