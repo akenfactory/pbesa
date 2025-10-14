@@ -18,6 +18,7 @@ import json
 import pickle
 import logging
 import traceback
+import pandas as pd
 from .mas import Adm
 from fuzzywuzzy import fuzz
 from pydantic import BaseModel
@@ -34,6 +35,8 @@ from .celulas import (celula_casos, celula_consultas, celula_saludos, celula_dat
                       celula_generar_doc_caso, celula_generar_doc_advice, celula_generar_doc_fact,
                       celula_generar_doc_goal, celula_generar_doc_test)
 from pbesa.social.prompts import ANALIZER_PROMPT, CLASSIFICATION_PROMPT, DERIVE_PROMPT, RECOVERY_PROMPT, ADAPT_PROMPT, SINTETIZER_PROMPT
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.feature_extraction.text import CountVectorizer
 
 # --------------------------------------------------------
 # Define DTOs
@@ -114,6 +117,24 @@ class AgentMetadata():
 # --------------------------------------------------------
 # Define common functions
 # --------------------------------------------------------
+
+def calculate_close(text1, text2, ratio) -> bool:
+        """ Check close
+        @param data: Data
+        @return: True if the agent is closed, False otherwise
+        """
+        documents = [text1, text2]
+        count_vectorizer = CountVectorizer()
+        sparse_matrix = count_vectorizer.fit_transform(documents)
+        doc_term_matrix = sparse_matrix.todense()
+        df = pd.DataFrame(
+            doc_term_matrix,
+            columns=count_vectorizer.get_feature_names_out(),
+            index=[text1, text2],
+        )
+        res = cosine_similarity(df, df)
+        similarity = res[0][1]
+        return True if similarity >= ratio else False, similarity
 
 def es_similar(text1, text2):
     similitud = fuzz.ratio(text1.lower(), text2.lower())

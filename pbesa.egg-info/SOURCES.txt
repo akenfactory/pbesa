@@ -57,6 +57,7 @@ pbesa/celulas/__init__.py
 pbesa/celulas/celula_casos.py
 pbesa/celulas/celula_consultas.py
 pbesa/celulas/celula_conversador.py
+pbesa/celulas/celula_corresponde.py
 pbesa/celulas/celula_cuestionador.py
 pbesa/celulas/celula_datos_identificables.py
 pbesa/celulas/celula_demanda.py

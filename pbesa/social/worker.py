@@ -101,6 +101,7 @@ class Task(Action):
     """ An action is a response to the occurrence of an event """
 
     def __init__(self) -> None:
+        self.__free_agent = True
         self.__is_pool = False
         self.__enable_response = False
         super().__init__()
@@ -110,10 +111,17 @@ class Task(Action):
         Response.
         @param data Event data 
         """
-        self.run(data)
-
-        if self.__is_pool:
+        e = None
+        self.__free_agent = True
+        try:
+            self.run(data)
+        except Exception as e1:
+            e = e1
+            logging.error(f"[Task]: {e}")
+        if self.__is_pool and self.__free_agent:
             self.adm.send_event(self.agent.get_controller(), 'notify', self.agent.id)
+        if e:
+            raise e
 
     def active_timeout(self, time:int) -> None:
         """ Active timeout
@@ -125,6 +133,7 @@ class Task(Action):
         """ Send response
         @param data: Data
         """
+        self.__free_agent = reset
         if self.__enable_response:
             response = {
                 'source': self.agent.id,
