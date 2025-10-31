@@ -20,7 +20,7 @@ from threading import Timer
 from abc import abstractmethod
 from ..kernel.agent import Agent
 from ..kernel.agent import Action
-
+from ..cognitive import AugmentedGeneration
 # ----------------------------------------------------------
 # Common function
 # ----------------------------------------------------------
@@ -118,7 +118,8 @@ class Task(Action):
         except Exception as e1:
             e = e1
             logging.error(f"[Task]: {e}")
-        if self.__is_pool and self.__free_agent:
+        #if self.__is_pool and self.__free_agent:
+        if not isinstance(self.agent, AugmentedGeneration):
             self.adm.send_event(self.agent.get_controller(), 'notify', self.agent.id)
         if e:
             raise e

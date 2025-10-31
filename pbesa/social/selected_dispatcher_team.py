@@ -75,6 +75,13 @@ class DelegateAction(Action):
         @param time: Time
         """
         self.adm.send_event(self.agent.id, 'timeout', {'time': time, 'dto': None})
+    
+    def notify_all_agents(self) -> None:
+        """ Notify all agents
+        """
+        for agent_id in self.agent.get_agent_list():
+            self.adm.send_event(self.agent.id, 'notify', agent_id)
+        logging.info(f"[Notify][{self.agent.id}]: all agents notified")
 
     def to_assign(self, data: any, operation=None) -> None:
         """ Assign
@@ -87,8 +94,9 @@ class DelegateAction(Action):
         logging.info('List of agents: ' + str(self.agent.get_agent_list()))
         if operation:
             logging.info(f'With operation {operation}')
-            exit = False
-            while not exit:
+            qsize = self.agent.get_free_queue().qsize()
+            for attemp in range(1, qsize + 1):
+                logging.info(f'Finding attenp agent:  {attemp}')
                 # Chec if the agent is instance of AugmentedGeneration
                 if isinstance(agent_obj, AugmentedGeneration) or isinstance(agent_obj, Dialog):
                     # Get the role
@@ -102,7 +110,7 @@ class DelegateAction(Action):
                         }
                         self.adm.send_event(ag, 'task', data['dto']['text'])
                         self.__rewier[ag] = 0
-                        exit = True
+                        break
                     else:
                         logging.info('The agent is not operational')
                         self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
@@ -112,6 +120,7 @@ class DelegateAction(Action):
                             self.__rewier[ag] = 0
                         if self.__rewier[ag] >= agent_count * 3:
                             data['gateway'].put('ERROR')
+                            self.adm.send_event(self.agent.id, 'notify', ag)
                             raise SelectedDispatcherException('[Error, toAssign]: The agent is not available')
                 else:
                     logging.info('The agent is operational')
@@ -122,6 +131,7 @@ class DelegateAction(Action):
                         self.__rewier[ag] = 0
                     if self.__rewier[ag] >= agent_count * 3:
                         data['gateway'].put('ERROR')
+                        self.adm.send_event(self.agent.id, 'notify', ag)
                         raise SelectedDispatcherException('[Error, toAssign]: The agent is not available')
         else:
             logging.info('Without operation')

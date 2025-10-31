@@ -44,6 +44,7 @@ examples/scripts/social/secuential_team.py
 examples/scripts/social/simple_delegator_team.py
 examples/scripts/social/simple_dispatcher_team.py
 pbesa/__init__.py
+pbesa/ai_client.py
 pbesa/cognitive.py
 pbesa/mas.py
 pbesa/models.py

@@ -18,6 +18,7 @@ import json
 import pickle
 import logging
 import traceback
+import threading
 import pandas as pd
 from .mas import Adm
 from fuzzywuzzy import fuzz
@@ -761,22 +762,31 @@ class Dialog(ABC):
         self.__vertices = []
 
     def notify(self, session_id, text):
-        try:
-            canales = self.state['canales']
-            canal = canales.get("Webhook")
-            #session_id = self.state['session_id']
-            dto = {
-                "session_id": session_id,
-                "text": text[0:100]
-            }
-            response = canal.post("notify", dto)
-            if response['status']:
-                logging.info(f"Notificación enviada: {text}")
-            else:
-                logging.warning(f"Notificación no enviada: {text}")
-        except Exception as e:
-            logging.error(f"Error al enviar notificación: {text}")
-            logging.error(f"Error: {e}")
+        """Envía una notificación de forma asíncrona usando un hilo que se termina automáticamente"""
+        def _notify_thread():
+            try:
+                canales = self.state['canales']
+                canal = canales.get("Webhook")
+                #session_id = self.state['session_id']
+                dto = {
+                    "session_id": session_id,
+                    "text": text[0:100]
+                }
+                response = canal.post("notify", dto)
+                if response['status']:
+                    logging.info(f"Notificación enviada: {text}")
+                else:
+                    logging.warning(f"Notificación no enviada: {text}")
+            except Exception as e:
+                logging.error(f"Error al enviar notificación: {text}")
+                logging.error(f"Error: {e}")
+            finally:
+                # El hilo se termina automáticamente al finalizar la función
+                logging.debug(f"Hilo de notificación terminado para session_id: {session_id}")
+        
+        # Crear y ejecutar el hilo (se termina automáticamente al finalizar _notify_thread)
+        thread = threading.Thread(target=_notify_thread, daemon=True)
+        thread.start()
     
     def update_conversation(self, session_manager, conversation_id, res):
         conversation = session_manager.get_conversation(conversation_id)

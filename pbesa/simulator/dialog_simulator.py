@@ -61,6 +61,7 @@ class DialogSimulator(object):
     # Efectua la inferencia del modelo.
     def evaluate(self, text, max_tkns=2000, reset=False) -> any:
         try:
+            res = None
             if reset:
                 self.iteracion = 1
                 self.work_memory = []
@@ -70,17 +71,17 @@ class DialogSimulator(object):
                 prompt  = SYSTEM_PROMPT
                 self.work_memory.append({"role": "system", "content": SYSTEM_PROMPT})    
                 prompt  = USER_PROMPT % text
-                self.work_memory.append({"role": "user", "content": prompt})
+                self.work_memory.append({"role": "system", "content": prompt})
             else:
                 self.work_memory.append({"role": "user", "content": text})
-            res = self.service.generate(self.work_memory, max_tkns)
-            self.work_memory.append({"role": "assistant", "content": res})
+                res = self.service.generate(self.work_memory, max_tkns)
+                self.work_memory.append({"role": "assistant", "content": res})
+                logging.info(f"Respuesta: {res}")
+                logging.info("\n")
+                if not res or res == "":
+                    res = text
+                    logging.warning(f"No obtener una respuesta.")
             self.iteracion += 1
-            logging.info(f"Respuesta: {res}")
-            logging.info("\n")
-            if not res or res == "":
-                res = text
-                logging.warning(f"No obtener una respuesta.")
             return res
         except Exception as e:
             logging.error(f"Error al procesar: {text}")

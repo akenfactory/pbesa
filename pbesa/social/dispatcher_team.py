@@ -82,6 +82,13 @@ class TarguedDispatcher(Action):
         logging.info(f"[Delegate] Send event timeout {time}")
         self.adm.send_event(ag, 'timeout', {'time': time, 'command': 'start'})
     
+    def notify_all_agents(self) -> None:
+        """ Notify all agents
+        """
+        for agent_id in self.agent.get_agent_list():
+            self.adm.send_event(self.agent.id, 'notify', agent_id)
+        logging.info(f"[Notify][{self.agent.id}]: all agents notified")
+    
     def execute(self, data: any) -> None:
         """ 
         Response.
@@ -116,10 +123,12 @@ class TarguedDispatcher(Action):
                     logging.error('[Delegate]: Not agent selected')
                 else:    
                     logging.error('[Delegate]: Timeout not defined in the state as "timeout" key')
+                    self.adm.send_event(self.agent.id, 'notify', ag)
         except Exception as e:
             traceback.print_exc()
             logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
             data['gateway'].put('ERROR')
+            self.notify_all_agents()
     
     def get_planilla(self) -> dict:
         return self.planilla
@@ -169,6 +178,13 @@ class SelectedDispatcher(Action):
         @return: Tuple with the agent and the score
         """
         raise NotImplementedError("The method manual_selection must be implemented in the subclass")
+
+    def notify_all_agents(self) -> None:
+        """ Notify all agents
+        """
+        for agent_id in self.agent.get_agent_list():
+            self.adm.send_event(self.agent.id, 'notify', agent_id)
+        logging.info(f"[Notify][{self.agent.id}]: all agents notified")
     
     def execute(self, data: any) -> None:
         """ 
@@ -185,8 +201,9 @@ class SelectedDispatcher(Action):
                 mayor_ag_id = self.planilla[session_id]
                 logging.info('The session is already assigned')
                 logging.info(f'The agent {mayor_ag_id} will be assigned')
-                exit = False
-                while not exit:
+                qsize = self.agent.get_free_queue().qsize()
+                for attemp in range(1, qsize + 1):
+                    logging.info(f'Finding attenp agent:  {attemp}')                    
                     ag = self.agent.get_free_queue().get()
                     agent_obj = self.adm.get_agent(ag)
                     # Get the role
@@ -198,7 +215,7 @@ class SelectedDispatcher(Action):
                         }
                         self.adm.send_event(ag, 'task', data['dto'])
                         self.__rewier[ag] = 0
-                        exit = True
+                        break
                     else:
                         logging.debug('The agent does not match the role')
                         self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
@@ -232,8 +249,8 @@ class SelectedDispatcher(Action):
                 # Check if the mayor agent is the same as the agent        
                 if score_mayor < 2:
                     logging.info(f'The agent {mayor_ag.id} will be assigned')
-                    exit = False
-                    while not exit:
+                    qsize = self.agent.get_free_queue().qsize()
+                    for attemp in range(1, qsize + 1):
                         ag = self.agent.get_free_queue().get()
                         agent_obj = self.adm.get_agent(ag)
                         # Chec if the agent is instance of AugmentedGeneration
@@ -247,8 +264,8 @@ class SelectedDispatcher(Action):
                                 }
                                 self.adm.send_event(ag, 'task', data['dto'])
                                 self.__rewier[ag] = 0
-                                exit = True
                                 self.planilla[session_id] = mayor_ag.id
+                                break
                             else:
                                 logging.debug('The agent does not match the role')
                                 self.adm.send_event(agent_obj.get_controller(), 'notify', ag)
@@ -265,7 +282,7 @@ class SelectedDispatcher(Action):
                                 'dtoList': []
                             }
                             self.adm.send_event(ag, 'task', data['dto'])
-                            exit = True
+                            break
                 else:
                     ag = self.agent.get_free_queue().get()
                     self.agent.get_request_dict()[ag] = {
@@ -279,10 +296,12 @@ class SelectedDispatcher(Action):
                 else:
                     data['gateway'].put('ERROR')
                     logging.error('[Delegate]: Timeout not defined in the state as "timeout" key')
+                    self.adm.send_event(self.agent.id, 'notify', ag)
         except Exception as e:
             traceback.print_exc()
             logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
             data['gateway'].put('ERROR')
+            self.notify_all_agents()
     
     def get_planilla(self) -> dict:
         return self.planilla
@@ -301,6 +320,13 @@ class Delegate(Action):
         logging.info(f"[Delegate] Send event timeout {time}")
         self.adm.send_event(ag, 'timeout', {'time': time, 'command': 'start'})
 
+    def notify_all_agents(self) -> None:
+        """ Notify all agents
+        """
+        for agent_id in self.agent.get_agent_list():
+            self.adm.send_event(self.agent.id, 'notify', agent_id)
+        logging.info(f"[Notify][{self.agent.id}]: all agents notified")
+        
     def execute(self, data: any) -> None:
         """ 
         Response.
@@ -317,6 +343,7 @@ class Delegate(Action):
         if 'timeout' in self.agent.state:
             self.active_timeout(ag, self.agent.state['timeout'])
         else:
+            self.adm.send_event(self.agent.id, 'notify', ag)
             raise DispatcherException('[Delegate]: Timeout not defined in the state as "timeout" key')
 
 # --------------------------------------------------------
@@ -334,7 +361,7 @@ class NotifyFreeAction(Action):
         free_queue = self.agent.get_free_queue()
         if not free_queue.full():
             free_queue.put(data)
-        logging.info(f"[ResponseAction][{self.agent.id}]: agente {data} liberado")
+            logging.info(f"[Notify][{self.agent.id}]: agente {data} liberado")
 
 # --------------------------------------------------------
 # Define Action

@@ -81,6 +81,13 @@ class BufferDispatcher(Action):
         logging.info(f"[Delegate] Send event timeout {time}")
         self.adm.send_event(ag, 'timeout', {'time': time, 'command': 'start'})
     
+    def notify_all_agents(self) -> None:
+        """ Notify all agents
+        """
+        for agent_id in self.agent.get_agent_list():
+            self.adm.send_event(self.agent.id, 'notify', agent_id)
+        logging.info(f"[Notify][{self.agent.id}]: all agents notified")
+    
     def execute(self, event: any) -> None:
         """ 
         Response.
@@ -130,6 +137,7 @@ class BufferDispatcher(Action):
                             else:
                                 data['gateway'].put('ERROR')
                                 logging.error('[Delegate]: Timeout not defined in the state as "timeout" key')
+                                self.adm.send_event(self.agent.id, 'notify', agent_id)
                             break
                         else:
                             logging.debug('The agent does not match the role')
@@ -141,11 +149,13 @@ class BufferDispatcher(Action):
                                 self.agent.planilla.pop(data['dto']['session']['session_id'], None)                 
                                 data['gateway'].put('ERROR')
                                 logging.error('[Error, toAssign]: The agent is not available')
+                                self.adm.send_event(self.agent.id, 'notify', agent_id)
                 logging.info(f"[Select]:[Dispacher]: Hold dict elements {len(self.agent.hold_dict)}")
                 time.sleep(3)#
         except Exception as e:
             traceback.print_exc()
             logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
+            self.notify_all_agents()
 
 class SelectedDispatcher(Action):
     """ An action is a response to the occurrence of an event """
@@ -183,6 +193,13 @@ class SelectedDispatcher(Action):
         @return: Tuple with the agent and the score
         """
         raise NotImplementedError("The method manual_selection must be implemented in the subclass")
+    
+    def notify_all_agents(self) -> None:
+        """ Notify all agents
+        """
+        for agent_id in self.agent.get_agent_list():
+            self.adm.send_event(self.agent.id, 'notify', agent_id)
+        logging.info(f"[Notify][{self.agent.id}]: all agents notified")
     
     def execute(self, data: any) -> None:
         """ 
@@ -241,10 +258,12 @@ class SelectedDispatcher(Action):
                     else:
                         logging.error('[Error, toAssign]: No agent found for the request')
                         data['gateway'].put('ERROR')
+                        self.adm.send_event(self.agent.id, 'notify', mayor_ag)
         except Exception as e:
             traceback.print_exc()
             logging.error(f"[Delegate][{self.agent.id}]: {str(e)}")
             data['gateway'].put('ERROR')
+            self.notify_all_agents()
     
     def get_planilla(self) -> dict:
         return self.agent.planilla
@@ -263,6 +282,13 @@ class Delegate(Action):
         logging.info(f"[Delegate] Send event timeout {time}")
         self.adm.send_event(ag, 'timeout', {'time': time, 'command': 'start'})
 
+    def notify_all_agents(self) -> None:
+        """ Notify all agents
+        """
+        for agent_id in self.agent.get_agent_list():
+            self.adm.send_event(self.agent.id, 'notify', agent_id)
+        logging.info(f"[Notify][{self.agent.id}]: all agents notified")
+
     def execute(self, data: any) -> None:
         """ 
         Response.
@@ -279,6 +305,7 @@ class Delegate(Action):
         if 'timeout' in self.agent.state:
             self.active_timeout(ag, self.agent.state['timeout'])
         else:
+            self.adm.send_event(self.agent.id, 'notify', ag)
             raise DispatcherException('[Delegate]: Timeout not defined in the state as "timeout" key')
 
 # --------------------------------------------------------
