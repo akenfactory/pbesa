@@ -119,8 +119,11 @@ class Task(Action):
             e = e1
             logging.error(f"[Task]: {e}")
         #if self.__is_pool and self.__free_agent:
-        if not isinstance(self.agent, AugmentedGeneration):
+        #if not isinstance(self.agent, AugmentedGeneration):
+        try:
             self.adm.send_event(self.agent.get_controller(), 'notify', self.agent.id)
+        except:
+            pass
         if e:
             raise e
 
