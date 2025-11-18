@@ -1717,7 +1717,7 @@ class Dialog(ABC):
             self.notify(session, "evaluando consulta...")
             for _ in range(3):
                 logging.info(f"Intento de evaluación: {_+1}")
-                conversacion = self.parse_conversation()
+                conversacion = self.parse_conversation() 
                 result = celula_evaluador.derive(self.__ai_service, self.definitions, self.rules, conversacion, max_tkns=10)
                 if result and not result == "":                           
                     if "APLICA" in result:
@@ -1726,6 +1726,7 @@ class Dialog(ABC):
                         return "Considero que el caso aplica. ¿Desea continuar con el trámite? Responda Sí o No."
                     elif "RECHAZO" in result:
                         self.notify(session, "rechazando consulta...")
+                        conversacion = self.parse_conversation()
                         res_rechazo = celula_respuesta.derive(self.__ai_service, self.definitions, self.rules, conversacion, max_tkns=164)
                         if res_rechazo and not res_rechazo == "":
                             if "SIN_COMENTARIOS" in res_rechazo:
@@ -1751,6 +1752,7 @@ class Dialog(ABC):
                             res = res.split('Formulación de la pregunta: ')[1].strip()
                         elif 'Chain of Thought' in res:
                             self.__q_attemps = 0
+                            self.__evaluate_work_memory = []
                             return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
                         self.__evaluate_work_memory.append({"role": "assistant", "content": res})
                         return res
@@ -1772,6 +1774,7 @@ class Dialog(ABC):
         except Exception as e:
             logging.error(f"Error al evaluar la consulta: {query}")
             logging.error(e)
+            self.__evaluate_work_memory = []
             return DialogState.ERROR
         
 # --------------------------------------------------------

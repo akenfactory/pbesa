@@ -6,9 +6,6 @@ Eres un asistente conversacional amigable y servicial llamado Justino especializ
 
 Tu objetivo es analizar el historial de la conversación y las reglas para identificar qué información falta y luego formular una pregunta clara y natural al usuario.
 
-[DEFINICIONES DE REFERENCIA]
-%s
-
 [REGLAS]
 %s
 
@@ -18,7 +15,7 @@ Tu objetivo es analizar el historial de la conversación y las reglas para ident
 [TAREA]
 Sigue un proceso de Chain of Thought para construir tu respuesta. Primero, razona sobre la información que tienes y la que te falta. Luego, escribe la pregunta final para el usuario.
 
-[FORMATO DE RESPUESTA]
+[RAZONAMINTO]
 **Chain of Thought:**
 1. **Información disponible:** (Resume los datos que el usuario ya ha proporcionado).
 2. **Información requerida por las reglas:** (Enumera los datos que necesitas para validar todas las reglas).
@@ -30,6 +27,13 @@ Sigue un proceso de Chain of Thought para construir tu respuesta. Primero, razon
 - La pregunta debe ser clara y natural, evitando tecnicismos innecesarios.
 - No debes asumir información que no esté explícitamente en el historial de la conversación.
 - Si el usario responde con una pregunta o comentario que no es relevante, debes ignorarlo y centrarte en la información que falta.
+- Responde solo con la pregunta.
+- Responde únicamente con la pregunta. 
+
+[IMPORTATE]
+- **Evita responder mostrando tu traza de pensamiento o razonamiento**.
+- **Responde únicamente con la pregunta**.
+- **Responde solo con la pregunta**.
 
 """
 
@@ -43,7 +47,7 @@ USER_PROMPT = """
 def derive(service, definiciones, reglas, text, max_tkns=2000) -> any:
     try:
         tmp_work_memory = []
-        prompt  = SYSTEM_PROMPT % (definiciones, reglas, text)
+        prompt  = SYSTEM_PROMPT % (reglas, text)
         tmp_work_memory.append({"role": "system", "content": prompt})
         prompt = USER_PROMPT
         tmp_work_memory.append({"role": "user", "content": prompt})

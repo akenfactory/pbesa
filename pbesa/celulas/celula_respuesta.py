@@ -4,9 +4,6 @@ SYSTEM_PROMPT = """
 [TAREA]
 Eres un sistema de clasificación experto. Tu única tarea es evaluar la siguiente conversación contra las reglas proporcionadas y responder con la justificación de RECHAZO.
 
-[DEFINICIONES]
-%s
-
 [REGLAS]
 %s
 
@@ -41,12 +38,12 @@ Respuesta:
 def derive(service, definiciones, reglas, text, max_tkns=2000) -> any:
     try:
         tmp_work_memory = []
-        prompt  = SYSTEM_PROMPT % (definiciones, reglas)
+        prompt  = SYSTEM_PROMPT % reglas
         tmp_work_memory.append({"role": "system", "content": prompt})
         prompt = USER_PROMPT % text
         tmp_work_memory.append({"role": "user", "content": prompt})
         res = service.generate(tmp_work_memory, max_tokens=max_tkns)
-        logging.info(f"\n\n\nProcesando:\nDefiniciones: {definiciones}\nReglas: {reglas}\nTexto: {text}")        
+        logging.info(f"\n\n\nProcesando:\nTexto: {text}")        
         logging.info(f"Respuesta: {res}")
         if not res or res == "":
             res = text
