@@ -667,7 +667,7 @@ class Dialog(ABC):
         if self.knowledge:
             prompt += conocimiento
         else:
-            logging.warning(f"No se ha definido conocimiento para el agente: {self.id}")
+            logging.info(f"No se ha definido conocimiento para el agente: {self.id}")
         prompt += continuar
         self.__system_work_memory.append({"role": "system", "content": prompt})
         
@@ -1736,12 +1736,12 @@ class Dialog(ABC):
                         self.__evaluate_work_memory = []
                         return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
                     elif "PREGUNTAR" in result:
-                        self.__q_attemps += 1
-                        if self.__q_attemps > 3:
-                            logging.error("Se alcanzó el límite de intentos de pregunta.")
-                            self.__q_attemps = 0
-                            self.__evaluate_work_memory = []
-                            return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
+                        #self.__q_attemps += 1
+                        #if self.__q_attemps > 3:
+                        #    logging.error("Se alcanzó el límite de intentos de pregunta.")
+                        #    self.__q_attemps = 0
+                        #    self.__evaluate_work_memory = []
+                        #    return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
                         self.notify(session, "preguntando al usuario...")
                         conversacion = self.parse_conversation()
                         res = celula_conversador.derive(self.__ai_service, self.definitions, self.rules, conversacion, max_tkns=200)
@@ -1750,10 +1750,10 @@ class Dialog(ABC):
                         res = res.replace("*", " ").strip()
                         if 'Formulación de la pregunta' in res:
                             res = res.split('Formulación de la pregunta: ')[1].strip()
-                        elif 'Chain of Thought' in res:
-                            self.__q_attemps = 0
-                            self.__evaluate_work_memory = []
-                            return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
+                        #elif 'Chain of Thought' in res:
+                        #    self.__q_attemps = 0
+                        #    self.__evaluate_work_memory = []
+                        #    return "Considero que el caso no aplica. ¿Desea continuar con el trámite? Responda Sí o No."
                         self.__evaluate_work_memory.append({"role": "assistant", "content": res})
                         return res
                     else:

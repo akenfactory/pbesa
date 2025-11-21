@@ -34,6 +34,7 @@ Sigue un proceso de Chain of Thought para construir tu respuesta. Primero, razon
 - **Evita responder mostrando tu traza de pensamiento o razonamiento**.
 - **Responde únicamente con la pregunta**.
 - **Responde solo con la pregunta**.
+- Evita mensionar el termino de queja dado que el contexto es en la presentación de una demanda
 
 """
 
@@ -51,7 +52,7 @@ def derive(service, definiciones, reglas, text, max_tkns=2000) -> any:
         tmp_work_memory.append({"role": "system", "content": prompt})
         prompt = USER_PROMPT
         tmp_work_memory.append({"role": "user", "content": prompt})
-        res = service.generate(tmp_work_memory, max_tokens=max_tkns)
+        res = service.generate(tmp_work_memory, max_tokens=max_tkns, temperature=0.33, top_p=0.8)
         logging.info(f"\n\n\nProcesando:\nDefiniciones: {definiciones}\nReglas: {reglas}\nTexto: {text}")        
         logging.info(f"Respuesta: {res}")
         if not res or res == "":
