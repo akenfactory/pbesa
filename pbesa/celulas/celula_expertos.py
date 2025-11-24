@@ -3,11 +3,18 @@ import logging
 PROMPT = """
 Eres un clasificador de textos que determina a qué entidad o dependencia gubernamental colombiana corresponde un texto dado, basándose en la descripción de sus funciones. Tu tarea es analizar el siguiente texto y determinar la clase más apropiada.
 
+Requisitos:
+
+* No incluyas explicaciones, razonamientos ni texto adicional.
+* **No añadas suposiciones** ni información adicional.
+* No incluyas detalles.
+* **No añadas conjeturas**.
+
 Responde únicamente con el nombre completo de la clase o con "NO_CORRESPONDE" si el texto no se ajusta a ninguna de las clases descritas. No agregues explicaciones ni comentarios adicionales.
 
 %s
 
-Opciones de respuesta posibles:
+Responde únicamente con una y solo una de estas opciones de nombre de clase:
 
 DIMAR - Dirección General Marítima
 DNDA - Dirección Nacional de Derecho de Autor
@@ -27,6 +34,9 @@ Supersociedades - Superintendencia de Sociedades - Reorganización Insolvencia
 Supersociedades - Superintendencia de Sociedades - Validación Judicial
 Supersociedades - Superintendencia de Sociedades - Mercantiles
 NO_CORRESPONDE
+
+IMPORTANTE: Solo responde a partir de las anteriores opciones con base a la clase identificada. 
+
 """
 
 # Efectua la inferencia del modelo.
