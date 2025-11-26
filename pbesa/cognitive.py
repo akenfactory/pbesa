@@ -19,6 +19,7 @@ import pickle
 import logging
 import traceback
 import threading
+import numpy as np
 import pandas as pd
 from .mas import Adm
 from fuzzywuzzy import fuzz
@@ -118,6 +119,44 @@ class AgentMetadata():
 # --------------------------------------------------------
 # Define common functions
 # --------------------------------------------------------
+
+def get_close(v1, v2) -> bool:
+        """ Check close
+        @param v1: First vector (embedding)
+        @param v2: Second vector (embedding)
+        @return: Cosine similarity value between the two vectors
+        """
+        # Convert to numpy arrays and ensure they are 2D
+        v1 = np.array(v1).reshape(1, -1) if len(np.array(v1).shape) == 1 else np.array(v1)
+        v2 = np.array(v2).reshape(1, -1) if len(np.array(v2).shape) == 1 else np.array(v2)
+        res = cosine_similarity(v1, v2)
+        return res[0][0]
+
+def guardrails(embedding, positive_kmeans_results, negative_kmeans_results):
+    # Obtiene el valor máximo de similitud con resultados positivos
+    logging.debug(f"Calculando similitud con {len(positive_kmeans_results)} resultados positivos")
+    positive_similarities = []
+    for item in positive_kmeans_results:
+        sim = get_close(embedding, item)
+        positive_similarities.append(sim)
+    avg_positive_similarity = max(positive_similarities) if positive_similarities else 0
+    
+    # Obtiene el valor máximo de similitud con resultados negativos
+    logging.debug(f"Calculando similitud con {len(negative_kmeans_results)} resultados negativos")
+    negative_similarities = []
+    for item in negative_kmeans_results:
+        sim = get_close(embedding, item)
+        negative_similarities.append(sim)
+    avg_negative_similarity = max(negative_similarities) if negative_similarities else 0
+    
+    logging.info(f"Similitud máxima positiva: {avg_positive_similarity:.4f}, Similitud máxima negativa: {avg_negative_similarity:.4f}")
+    if avg_positive_similarity < 0.1 and avg_negative_similarity < 0.1:
+        resultado = False
+    else:
+        resultado = avg_positive_similarity > avg_negative_similarity
+    logging.info(f"Resultado guardrails: {'EN CONTEXTO' if resultado else 'FUERA'}")
+    return resultado
+
 
 def calculate_close(text1, text2, ratio) -> bool:
         """ Check close
